@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.28)
+project(forth)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+add_compile_options(-Wall)
+
+
+
+include(CTest)
+if(BUILD_TESTING)
+    add_compile_options(-g)
+    add_subdirectory(tests)
+endif()
+
+add_subdirectory(src)

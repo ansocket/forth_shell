@@ -1,0 +1,282 @@
+#include "vm.h"
+
+static const vm_ops_t ops[];
+
+int vm_init(vm_t* vm, uint8_t* ram, uint32_t ram_size, size_t* stack, uint32_t stack_size, size_t* rstack, uint32_t rstack_size)
+{
+    vm->ram_start = ram;
+    vm->ram = vm->ram_start;
+    vm->rstack_ptr = rstack;
+    vm->stack_ptr = stack;
+    vm->ram_size = ram_size;
+    vm->stack_top = vm->stack_ptr + stack_size;
+    vm->rstack_top = vm->rstack_ptr + rstack_size;
+    vm->sp = vm->stack_top;
+    vm->rsp = vm->rstack_top;
+    vm->extentions_flags = 0;
+
+    return 0;
+}
+
+int vm_start(vm_t* vm, size_t* addr)
+{
+    vm->pc = addr;
+    while(1)
+    {
+        if(vm->extentions_flags != 0)
+        {
+            if((vm->extentions_flags & VM_EXCEPTION_BYE) == VM_EXCEPTION_BYE)
+            {
+                return VM_EXCEPTION_BYE;
+            }
+        }
+        ops[*vm->pc](vm);
+        if(vm->trace_cb != NULL)
+        {
+            vm->trace_cb(vm);
+        }
+        vm->pc++;
+    }
+
+}
+void vm_set_trace_cb(vm_t* vm, vm_ops_t trace_cb)
+{
+    if(vm != NULL)
+        vm->trace_cb = trace_cb;
+}
+void vm_none(vm_t* vm)
+{
+
+}
+void vm_push(vm_t* vm)
+{
+    *(--vm->sp) = *(++vm->pc);
+}
+void vm_ret(vm_t* vm)
+{
+    if(vm->rsp >= (vm->rstack_top))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_BYE;
+        return;
+    }
+    vm->pc = ((size_t*)*vm->rsp++);
+}
+void vm_call(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 1))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    size_t* program = (size_t*)*vm->sp++;
+    *(--vm->rsp) = (size_t)vm->pc;
+    vm->pc = program - 1;
+}
+void vm_c_exec(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 1))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    vm_ops_t op = (vm_ops_t)*(vm->sp++);
+    if(op == NULL)
+    {
+        vm->extentions_flags |= VM_EXCEPTION_MEMFAULT;
+        return;
+    }
+    op(vm);
+}
+void vm_jmp(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 1))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    vm->pc = (size_t*)*(vm->sp++) - 1;
+}
+void vm_pc(vm_t* vm)
+{
+    *(--vm->sp) = (size_t)&vm->pc;
+}
+void vm_sp(vm_t* vm)
+{
+    vm->sp -= 1;
+    *(vm->sp) = (size_t)&vm->sp;
+}
+void vm_add(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    *(vm->sp + 1) = *(vm->sp) + *(vm->sp + 1);
+    vm->sp++;
+}
+void vm_sub(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    *(vm->sp + 1) = *(vm->sp) - *(vm->sp + 1);
+    vm->sp++;
+}
+void vm_mul(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    *(vm->sp + 1) = *(vm->sp) * *(vm->sp + 1);
+    vm->sp++;
+}
+void vm_div(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    if(*(vm->sp + 1) == 0)
+    {
+        vm->extentions_flags |= VM_EXCEPTION_ZERO_DIVISION;
+        return;
+    }
+    *(vm->sp + 1) = *(vm->sp) / *(vm->sp + 1);
+    vm->sp++;
+}
+void vm_mod(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    if(*(vm->sp + 1) == 0)
+    {
+        vm->extentions_flags |= VM_EXCEPTION_ZERO_DIVISION;
+        return;
+    }
+    *(vm->sp + 1) = *(vm->sp) % *(vm->sp + 1);
+    vm->sp++;
+}
+void vm_and(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    *(vm->sp + 1) = *(vm->sp) && *(vm->sp + 1);
+    vm->sp++;
+}
+void vm_or(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    *(vm->sp + 1) = *(vm->sp) || *(vm->sp + 1);
+    vm->sp++;
+}
+void vm_xor(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    *(vm->sp + 1) = *(vm->sp) ^ *(vm->sp + 1);
+    vm->sp++;
+}
+void vm_load(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 1))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    *(vm->sp) = *(size_t*)*(vm->sp);
+}
+void vm_less(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    *(vm->sp + 1) = (*(vm->sp) < *(vm->sp + 1)) ? VM_TRUE : VM_FALSE;
+    vm->sp++;
+}
+void vm_greater(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    *(vm->sp + 1) = (*(vm->sp) > *(vm->sp + 1)) ? VM_TRUE : VM_FALSE;
+    vm->sp++;
+}
+void vm_str(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    *(size_t*)*(vm->sp) = *(vm->sp + 1);
+    vm->sp += 2;
+}
+void vm_it(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 1))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    if(*(vm->sp++) != VM_FALSE)
+    {
+        vm->pc += 6;
+    }
+}
+void vm_drop(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 1))
+    {
+        vm->extentions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    vm->sp++;
+}
+static const vm_ops_t ops[] = 
+{
+    [VM_NONE] = vm_none,
+    [VM_PUSH] = vm_push,
+    [VM_RET] = vm_ret,
+    [VM_CALL] = vm_call,
+    [VM_LOAD] = vm_load,
+    [VM_STR] = vm_str,
+    [VM_C_EXEC] = vm_c_exec,
+    [VM_JMP] = vm_jmp,
+    [VM_DROP] = vm_drop,
+    [VM_PC] = vm_pc,
+    [VM_SP] = vm_sp,
+    [VM_ADD] = vm_add,
+    [VM_SUB] = vm_sub,
+    [VM_MUL] = vm_mul,
+    [VM_DIV] = vm_div,
+    [VM_MOD] = vm_mod,
+    [VM_AND] = vm_and,
+    [VM_OR] = vm_or,
+    [VM_XOR] = vm_xor,
+    [VM_LESS] = vm_less,
+    [VM_GREATER] = vm_greater,
+    [VM_IT] = vm_it,
+};
