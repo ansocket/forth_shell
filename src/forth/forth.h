@@ -39,8 +39,9 @@ typedef enum
     FORTH_ERR_ERR,
 }forth_error_t;
 
-forth_error_t forth_dict_init(vm_t* vm, size_t* last_rom_dict_addr);
 
+size_t* forth_search(vm_t* vm, const char* name);
+forth_error_t forth_init(vm_t* vm);
 #ifdef __cplusplus
 }
 #endif
