@@ -15,23 +15,12 @@ extern "C" {
 #define FORTH_DICT_OFFSET   (FORTH_SANDBOX_OFFSET + FORTH_SANDBOX_SIZE) 
 
 
-typedef enum : uint8_t
-{
-    FORTH_DICT_FLAG_TEXT,
-    FORTH_DICT_FLAG_VARIABLE,
-    FORTH_DICT_FLAG_CONST
-}forth_flag_type_t;
+#define FORTH_DICT_FLAG_COMPILE_ONLY    (1 << 0)
+#define FORTH_DICT_FLAG_IMMEDIATE       (1 << 1)
+#define FORTH_DICT_FLAG_TEXT            (0 << 2)
+#define FORTH_DICT_FLAG_VARIABLE        (1 << 2)
+#define FORTH_DICT_FLAG_CONSTANT        (2 << 2)
 
-typedef union
-{
-    struct
-    {
-        uint8_t compile_only : 1;
-        uint8_t immediate : 1;
-        forth_flag_type_t type : 2;
-    };
-    uint8_t body;
-}forth_dict_flag_t;
 
 typedef enum
 {
@@ -42,6 +31,11 @@ typedef enum
 
 size_t* forth_search(vm_t* vm, const char* name);
 forth_error_t forth_init(vm_t* vm);
+size_t forth_get_constant_data(vm_t* vm,size_t* addr);
+size_t* forth_get_variable_data_ptr(vm_t* vm,size_t* addr);
+size_t* forth_add_variable(vm_t* vm, const char* name, size_t value);
+size_t* forth_add_constant(vm_t* vm, const char* name, size_t value);
+
 #ifdef __cplusplus
 }
 #endif

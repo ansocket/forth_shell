@@ -19,3 +19,9 @@ add_executable(forth_dict_test forth_dict_test.cpp)
 target_link_libraries(forth_dict_test PRIVATE GTest::gtest_main forth)
 target_compile_options(forth_dict_test PRIVATE ${TEST_COMPILE_FLAGS})
 add_test(NAME forth_dict_test COMMAND forth_dict_test)
+
+
+add_executable(forth_compile_tests forth_compile_tests.cpp)
+target_link_libraries(forth_compile_tests PRIVATE GTest::gtest_main forth)
+target_compile_options(forth_compile_tests PRIVATE ${TEST_COMPILE_FLAGS})
+add_test(NAME forth_compile_tests COMMAND forth_compile_tests)

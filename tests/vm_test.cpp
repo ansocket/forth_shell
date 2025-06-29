@@ -29,8 +29,10 @@ TEST(basic, vm_test_group) {
     size_t* stack = (size_t*)malloc(256);
     size_t* rstack = (size_t*)malloc(256);
     vm_init(vm,ram,8192,stack,256/sizeof(size_t),rstack,256/sizeof(size_t));
-    vm_set_trace_cb(vm, vm_trace);
+    //vm_set_trace_cb(vm, vm_trace);
     vm_start(vm, basic_test_program);
+    ASSERT_EQ(*vm->sp++,10);
+    ASSERT_EQ(vm->sp,vm->stack_top);
     free(vm);
     free(ram);
     free(stack);
@@ -40,15 +42,12 @@ TEST(basic, vm_test_group) {
 
 static void test_func(vm_t* vm)
 {
-    printf("test_func\n");
+    *(--vm->sp) = 10;
 }
 static size_t c_test_program[] = 
 {
     VM_OP(VM_PUSH),
     (size_t)test_func,
-    VM_OP(VM_PUSH),
-    (size_t)test_func,
-    VM_OP(VM_C_EXEC),
     VM_OP(VM_C_EXEC),
     VM_OP(VM_RET),
 };
@@ -60,8 +59,10 @@ TEST(c_exec, vm_test_group) {
     size_t* stack = (size_t*)malloc(256);
     size_t* rstack = (size_t*)malloc(256);
     vm_init(vm,ram,8192,stack,256/sizeof(size_t),rstack,256/sizeof(size_t));
-    vm_set_trace_cb(vm, vm_trace);
+    //vm_set_trace_cb(vm, vm_trace);
     vm_start(vm, c_test_program);
+    ASSERT_EQ(*vm->sp++,10);
+    ASSERT_EQ(vm->sp,vm->stack_top);
     free(vm);
     free(ram);
     free(stack);
@@ -97,8 +98,13 @@ TEST(call_func, vm_test_group) {
     size_t* stack = (size_t*)malloc(256*sizeof(size_t));
     size_t* rstack = (size_t*)malloc(256);
     vm_init(vm,ram,8192,stack,256/sizeof(size_t),rstack,256/sizeof(size_t));
-    vm_set_trace_cb(vm, vm_trace);
+    //vm_set_trace_cb(vm, vm_trace);
     vm_start(vm, call_test_1);
+    for(int i = 6; i > 0; i--)
+    {
+        ASSERT_EQ(*vm->sp++,i);
+    }
+    ASSERT_EQ(vm->sp,vm->stack_top);
     free(vm);
     free(ram);
     free(stack);
@@ -120,8 +126,10 @@ TEST(add_test, vm_test_group) {
     size_t* stack = (size_t*)malloc(256*sizeof(size_t));
     size_t* rstack = (size_t*)malloc(256);
     vm_init(vm,ram,8192,stack,256/sizeof(size_t),rstack,256/sizeof(size_t));
-    vm_set_trace_cb(vm, vm_trace);
+    //vm_set_trace_cb(vm, vm_trace);
     vm_start(vm, add_test_program);
+    ASSERT_EQ(*vm->sp++,-1);
+    ASSERT_EQ(vm->sp,vm->stack_top);
     free(vm);
     free(ram);
     free(stack);
@@ -155,8 +163,11 @@ TEST(jmp_test, vm_test_group) {
     size_t* stack = (size_t*)malloc(256*sizeof(size_t));
     size_t* rstack = (size_t*)malloc(256);
     vm_init(vm,ram,8192,stack,256/sizeof(size_t),rstack,256/sizeof(size_t));
-    vm_set_trace_cb(vm, vm_trace);
+    //vm_set_trace_cb(vm, vm_trace);
     vm_start(vm, jmp_test_program);
+    ASSERT_EQ(*vm->sp++,2);
+    ASSERT_EQ(*vm->sp++,1);
+    ASSERT_EQ(vm->sp,vm->stack_top);
     free(vm);
     free(ram);
     free(stack);
@@ -183,8 +194,10 @@ TEST(str_test, vm_test_group) {
     size_t* stack = (size_t*)malloc(256*sizeof(size_t));
     size_t* rstack = (size_t*)malloc(256);
     vm_init(vm,ram,8192,stack,256/sizeof(size_t),rstack,256/sizeof(size_t));
-    vm_set_trace_cb(vm, vm_trace);
+    //vm_set_trace_cb(vm, vm_trace);
     vm_start(vm, str_test_program);
+    ASSERT_EQ(*vm->sp++,99);
+    ASSERT_EQ(vm->sp,vm->stack_top);
     free(vm);
     free(ram);
     free(stack);
@@ -232,8 +245,13 @@ TEST(it_test, vm_test_group) {
     size_t* stack = (size_t*)malloc(256*sizeof(size_t));
     size_t* rstack = (size_t*)malloc(256);
     vm_init(vm,ram,8192,stack,256/sizeof(size_t),rstack,256/sizeof(size_t));
-    vm_set_trace_cb(vm, vm_trace);
+    //vm_set_trace_cb(vm, vm_trace);
     vm_start(vm, it_test_program);
+    for(uint8_t i = 0; i < 11; i++)
+    {
+        ASSERT_EQ(*vm->sp++,i);
+    }
+    ASSERT_EQ(vm->sp,vm->stack_top);
     free(vm);
     free(ram);
     free(stack);

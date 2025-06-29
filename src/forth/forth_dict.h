@@ -6,10 +6,13 @@ extern "C" {
 #endif
 
 #include "forth.h"
-#include "vm.h"
 
-forth_error_t forth_dict_init(vm_t* vm, size_t* last_rom_dict_addr);
-
+forth_error_t forth_dict_init(size_t* dict_addr, size_t* last_rom_dict_addr);
+size_t* forth_dict_add_header(size_t* here, uint8_t flags, const char* name, size_t* link_addr);
+size_t* forth_dict_get_text_ptr(size_t* addr);
+uint8_t forth_dict_get_flags(size_t* addr);
+char* forth_dict_get_name(size_t* addr);
+size_t* forth_dict_search(size_t* dict_addr, const char* name);
 #ifdef __cplusplus
 }
 #endif
