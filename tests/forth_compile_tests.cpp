@@ -256,11 +256,46 @@ TEST(forth_loop_test, forth_compile_group) {
     vm_init(vm,ram,8192,stack,1024/sizeof(size_t),rstack,1024/sizeof(size_t));
     vm_set_trace_cb(vm, vm_trace);
     forth_init(vm);
-    strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,": BEBE 10 0 DO 3 0 DO J LOOP LOOP ; BEBE");
+    strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,": BEBE 10 -2 DO 1 0 DO J LOOP LOOP ; BEBE");
     forth_error_t err = forth_start_compiling(vm);
     ASSERT_EQ(err, FORTH_ERR_OK);
     vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
     forth_vm_reload(vm);
+    for(int i = 10; i < -2; i--)
+    {
+        ASSERT_EQ(*vm->sp++, i);
+    }
+    free(vm);
+    free(ram);
+    free(stack);
+    free(rstack);
+}
+
+TEST(forth_if_test, forth_compile_group) {
+    vm_t* vm = (vm_t*)malloc(sizeof(vm_t));
+    uint8_t* ram = (uint8_t*)malloc(8192);
+    size_t* stack = (size_t*)malloc(256);
+    size_t* rstack = (size_t*)malloc(256);
+    vm_init(vm,ram,8192,stack,256/sizeof(size_t),rstack,256/sizeof(size_t));
+    vm_set_trace_cb(vm, vm_trace);
+    forth_init(vm);
+
+    strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET," TRUE : BEBE IF 1 ELSE 3 ELSE 2 THEN ; BEBE");
+    forth_error_t err = forth_start_compiling(vm);
+    ASSERT_EQ(err, FORTH_ERR_OK);
+    vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
+    forth_vm_reload(vm);
+
+    strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET," FALSE : BIBI IF 1 ELSE 3 ELSE 2 THEN ; BIBI");
+    err = forth_start_compiling(vm);
+    ASSERT_EQ(err, FORTH_ERR_OK);
+    vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
+    forth_vm_reload(vm);
+
+    for(int i = 3; i < 0; i--)
+    {
+        ASSERT_EQ(*vm->sp++, i);
+    }
     free(vm);
     free(ram);
     free(stack);
