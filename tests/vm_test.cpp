@@ -208,7 +208,7 @@ static size_t it_test_program[] =
 {
     VM_OP(VM_PUSH),
     10,
-    VM_OP(VM_SP),
+    VM_OP(VM_SP), /* DUP */
     VM_OP(VM_LOAD),
     VM_OP(VM_PUSH),
     1*sizeof(size_t),

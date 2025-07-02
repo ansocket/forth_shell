@@ -10,9 +10,9 @@ extern "C" {
 #include "vm.h"
 
 
-extern const size_t true_program_arr[];
+extern const size_t loop_program_arr[];
 
-#define FORTH_LAST_ROM_ADDRESS true_program_arr
+#define FORTH_LAST_ROM_ADDRESS loop_program_arr
 
 #ifdef __cplusplus
 }

@@ -13,26 +13,28 @@ static int is_term(char ch)
     return 0;
 }
 
-char* forth_inter_token(char** buf, int *len)
+char* forth_inter_token(char** buf)
 {
     char* res = NULL;
     if(buf == NULL) return res;
-    while(is_term(**buf) && (*len > 0))
+    
+    while(is_term(**buf))
     {
         (*buf)++;
-        (*len)--;
+        if(**buf == '\0')
+            break;
     } 
-    
-    if(*len == 0) return res;
+    int len = strlen(*buf);
+    if(len == 0) return res;
     res = *buf;
-    while(*len > 0)
+    while(len > 0)
     {
         if(is_term(**buf))
         {
             **buf = '\0';
             break;
         }
-        (*len)--;
+        len--;
         (*buf)++;
     }
     return res;

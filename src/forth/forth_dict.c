@@ -74,7 +74,7 @@ size_t* forth_dict_search(size_t* dict_addr, const char* name)
         }
         else 
         {
-            temp += strlen(temp);
+            temp += strlen(temp) + 1;
             temp = align_for(temp, sizeof(size_t));
             dict_addr = *(size_t**)temp;
         }

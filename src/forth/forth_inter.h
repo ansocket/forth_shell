@@ -7,7 +7,7 @@ extern "C" {
 
 #include "stddef.h"
 
-char* forth_inter_token(char** buf, int *len);
+char* forth_inter_token(char** buf);
 
 #ifdef __cplusplus
 }

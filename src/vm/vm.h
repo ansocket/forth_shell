@@ -31,7 +31,7 @@ typedef struct vm
     uint32_t ram_size;
     size_t* stack_top;
     size_t* rstack_top;
-    uint32_t extentions_flags;
+    uint32_t exceptions_flags;
     vm_ops_t trace_cb;
 }vm_t;
 
@@ -56,6 +56,7 @@ enum
     VM_RPUSH,
     VM_DROP,
     VM_RPOP,
+    VM_RDROP,
     VM_PC,
     VM_SP,
     VM_RSP,
@@ -70,7 +71,7 @@ enum
     VM_LESS,
     VM_GREATER,
     VM_IT,
-
+    VM_SWAP,
     VM_LOADBYTE,
     
     VM_STRBYTE,
