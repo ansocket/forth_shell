@@ -32,6 +32,7 @@ forth_error_t forth_init(vm_t* vm)
     memset(vm->ram + FORTH_STRBUF_OFFSET,'\0',FORTH_STRBUF_SIZE);
     forth_add_variable(vm,"STATE",FORTH_STATE_INTERPRET);
     forth_add_variable(vm,"SANDBOX",(size_t)(vm->ram + FORTH_SANDBOX_OFFSET));
+    forth_add_variable(vm,"BASE",(size_t)(10));
     forth_add_constant(vm, "I", -1);
     forth_add_constant(vm, "J", -1);
     return res; 

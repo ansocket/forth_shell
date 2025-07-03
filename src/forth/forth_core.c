@@ -5,6 +5,7 @@
 #include "vm.h"
 #include "stdint.h"
 #include "string.h"
+#include "stdio.h" /* for sprintf */
 static const size_t dup_program_arr[] = 
 {
     (FORTH_DICT_FLAG_TEXT)
@@ -337,6 +338,11 @@ const size_t then_program_arr[] =
 /* THEN END OF DEFINITION */
 
 /* THEN START OF DEFINITION */
+static void forth_dot_quote_post_handler(vm_t* vm)
+{
+    int len = *vm->sp++;
+    vm->pc += len/sizeof(size_t) + 1;
+}
 static void forth_dot_quote_immediate_handler(vm_t* vm)
 {
     size_t* in = forth_get_variable_data_ptr(vm, forth_search(vm, ">IN"));
@@ -359,11 +365,18 @@ static void forth_dot_quote_immediate_handler(vm_t* vm)
     *in += len + 2;
     *(*copy_ptr)++ = VM_OP(VM_PUSH);
     *(*copy_ptr)++ = len;
+    *(*copy_ptr)++ = VM_OP(VM_PC);
+    *(*copy_ptr)++ = VM_OP(VM_LOAD);
     *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = (size_t)str;
+    *(*copy_ptr)++ = 10*sizeof(size_t);
+    *(*copy_ptr)++ = VM_OP(VM_ADD);
     *(*copy_ptr)++ = VM_OP(VM_PUSH);
     *(*copy_ptr)++ = (size_t)forth_dict_get_text_ptr(forth_search(vm, "OUTPUT"));
     *(*copy_ptr)++ = VM_OP(VM_CALL);
+    *(*copy_ptr)++ = VM_OP(VM_PUSH);
+    *(*copy_ptr)++ = (size_t)forth_dot_quote_post_handler;
+    *(*copy_ptr)++ = VM_OP(VM_C_EXEC);
+
     memcpy((char*)(*copy_ptr),str,len);
     *(char**)copy_ptr += len;
     if(((size_t)(*copy_ptr) % sizeof(size_t)) > 0)
@@ -381,6 +394,30 @@ const size_t dot_quote_program_arr[] =
     (size_t)then_program_arr,
     VM_OP(VM_PUSH),
     (size_t)forth_dot_quote_immediate_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET)
+};
+
+static void forth_dot_handler(vm_t* vm)
+{
+    size_t value = *vm->sp++;
+    char buffer[32];
+    sprintf(buffer,"%ld ",value);
+    /* TODO: BASE */
+    *(--vm->sp) = strlen(buffer);
+    *(--vm->sp) = (size_t)buffer;
+    size_t* runner = (size_t*)*(forth_dict_get_text_ptr(forth_search(vm, "OUTPUT")) + 1);
+    ((vm_ops_t)runner)(vm);
+    vm->sp++;
+}
+const size_t dot_program_arr[] = 
+{
+    FORTH_DICT_FLAG_TEXT
+    | ((size_t)'.' << 8)
+    | ((size_t)'\0' << 16),
+    (size_t)dot_quote_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)forth_dot_handler,
     VM_OP(VM_C_EXEC),
     VM_OP(VM_RET)
 };

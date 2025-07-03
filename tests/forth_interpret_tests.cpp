@@ -26,17 +26,11 @@ void forth_output_data(vm_t* vm)
 {
     /* stack -> ADDR LENGTH */
     char* data = (char*)*vm->sp++;
-    int len = *vm->sp++;
+    int len = *vm->sp;
     for(int i = 0; i < len; i++)
     {
         putchar(data[i]);
     }
-    *vm->rsp = (*vm->rsp + len);
-    if((*vm->rsp % sizeof(size_t)) > 0)
-    {
-        *vm->rsp = (size_t)(*vm->rsp + (sizeof(size_t) - (*vm->rsp % sizeof(size_t))));
-    } 
-
 }
 TEST(forth_output_test, forth_interpret_group) {
     vm_t* vm = (vm_t*)malloc(sizeof(vm_t));
@@ -47,7 +41,7 @@ TEST(forth_output_test, forth_interpret_group) {
    // vm_set_trace_cb(vm, vm_trace);
     forth_init(vm);
     forth_add_custom_function(vm, "OUTPUT", forth_output_data);
-    strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET," .\" Hello World \" 1 2 .\" bebe \" 2");
+    strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET," .\" Hello World \" 1 . 2 .\" bebe \" 2");
     forth_error_t err = forth_start_compiling(vm);
     ASSERT_EQ(err, FORTH_ERR_OK);
     vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));

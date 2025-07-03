@@ -7,17 +7,11 @@ void forth_output_data(vm_t* vm)
 {
     /* stack -> ADDR LENGTH */
     char* data = (char*)*vm->sp++;
-    int len = *vm->sp++;
+    int len = *vm->sp;
     for(int i = 0; i < len; i++)
     {
         putchar(data[i]);
     }
-    *vm->rsp = (*vm->rsp + len);
-    if((*vm->rsp % sizeof(size_t)) > 0)
-    {
-        *vm->rsp = (size_t)(*vm->rsp + (sizeof(size_t) - (*vm->rsp % sizeof(size_t))));
-    } 
-
 }
 
 int main()
@@ -30,7 +24,7 @@ int main()
    // vm_set_trace_cb(vm, vm_trace);
     forth_init(vm);
     forth_add_custom_function(vm, "OUTPUT", forth_output_data);
-    strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET," .\" Hello World\n \" 1 2 .\" bebe \" 2");
+    strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET," 1 2 + DUP . 8883 + . .\" \nSasha molodec\n\"");
     forth_error_t err = forth_start_compiling(vm);
     if(err != FORTH_ERR_OK) return -1;
     vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
