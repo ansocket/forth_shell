@@ -1,0 +1,2 @@
+add_executable(examples_interpreter main.c)
+target_link_libraries(examples_interpreter PRIVATE forth)

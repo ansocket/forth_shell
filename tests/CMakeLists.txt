@@ -25,3 +25,8 @@ add_executable(forth_compile_tests forth_compile_tests.cpp)
 target_link_libraries(forth_compile_tests PRIVATE GTest::gtest_main forth)
 target_compile_options(forth_compile_tests PRIVATE ${TEST_COMPILE_FLAGS})
 add_test(NAME forth_compile_tests COMMAND forth_compile_tests)
+
+add_executable(forth_interpret_tests forth_interpret_tests.cpp)
+target_link_libraries(forth_interpret_tests PRIVATE GTest::gtest_main forth)
+target_compile_options(forth_interpret_tests PRIVATE ${TEST_COMPILE_FLAGS})
+add_test(NAME forth_interpret_tests COMMAND forth_interpret_tests)

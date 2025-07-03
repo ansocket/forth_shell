@@ -43,6 +43,7 @@ forth_error_t forth_compile(vm_t* vm, char* token);
 size_t* forth_add_definition(vm_t* vm, const char* name);
 forth_error_t forth_vm_reload(vm_t* vm);
 forth_error_t forth_start_compiling(vm_t* vm);
+size_t* forth_add_custom_function(vm_t* vm, const char* name, vm_ops_t func);
 #ifdef __cplusplus
 }
 #endif

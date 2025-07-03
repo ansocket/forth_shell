@@ -11,6 +11,7 @@ include(CTest)
 if(BUILD_TESTING)
     add_compile_options(-g)
     add_subdirectory(tests)
+    add_subdirectory(examples)
 endif()
 
 add_subdirectory(src)

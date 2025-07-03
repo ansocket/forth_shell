@@ -221,3 +221,19 @@ forth_error_t forth_vm_reload(vm_t* vm)
     *in_ptr = 0;
     return FORTH_ERR_OK;
 }
+
+size_t* forth_add_custom_function(vm_t* vm, const char* name, vm_ops_t func)
+{
+    if((vm == NULL) || (name == NULL) || (func == NULL)) return NULL;
+    size_t** here_addr = (size_t**)forth_dict_get_text_ptr(forth_search(vm, "HERE"));
+    size_t** forth_addr = (size_t**)forth_dict_get_text_ptr( forth_search(vm, "FORTH"));
+    if((here_addr == NULL) || (forth_addr == NULL)) return NULL;
+    size_t* link = *forth_addr;
+    *forth_addr = *here_addr;
+    *here_addr = forth_dict_add_header(*here_addr,FORTH_DICT_FLAG_TEXT,name,link);
+    *(*here_addr)++ = VM_OP(VM_PUSH);
+    *(*here_addr)++ = (size_t)func;
+    *(*here_addr)++ = VM_OP(VM_C_EXEC);
+    *(*here_addr)++ = VM_OP(VM_RET);
+    return *forth_addr;
+}

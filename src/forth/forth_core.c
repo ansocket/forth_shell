@@ -4,7 +4,7 @@
 #include "stddef.h"
 #include "vm.h"
 #include "stdint.h"
-
+#include "string.h"
 static const size_t dup_program_arr[] = 
 {
     (FORTH_DICT_FLAG_TEXT)
@@ -334,5 +334,53 @@ const size_t then_program_arr[] =
     VM_OP(VM_C_EXEC),
     VM_OP(VM_RET)
 };
-
 /* THEN END OF DEFINITION */
+
+/* THEN START OF DEFINITION */
+static void forth_dot_quote_immediate_handler(vm_t* vm)
+{
+    size_t* in = forth_get_variable_data_ptr(vm, forth_search(vm, ">IN"));
+    char* str = (char*)(vm->ram + FORTH_STRBUF_OFFSET + *in + 1);
+    size_t* state = forth_get_variable_data_ptr(vm, forth_search(vm, "STATE"));
+    size_t** copy_ptr = NULL;
+    int len = 0;
+    if(*state == FORTH_STATE_INTERPRET)
+    {
+        copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, forth_search(vm, "SANDBOX"));
+    }
+    else {
+        copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, forth_search(vm, "HERE"));
+    }
+    while(*(str + len) !=  '"')
+    {
+        len++;
+    }
+    *(str + len + 1) = '\0';
+    *in += len + 2;
+    *(*copy_ptr)++ = VM_OP(VM_PUSH);
+    *(*copy_ptr)++ = len;
+    *(*copy_ptr)++ = VM_OP(VM_PUSH);
+    *(*copy_ptr)++ = (size_t)str;
+    *(*copy_ptr)++ = VM_OP(VM_PUSH);
+    *(*copy_ptr)++ = (size_t)forth_dict_get_text_ptr(forth_search(vm, "OUTPUT"));
+    *(*copy_ptr)++ = VM_OP(VM_CALL);
+    memcpy((char*)(*copy_ptr),str,len);
+    *(char**)copy_ptr += len;
+    if(((size_t)(*copy_ptr) % sizeof(size_t)) > 0)
+    {
+        *(char**)copy_ptr += sizeof(size_t) - ((size_t)(*copy_ptr) % sizeof(size_t));
+    } 
+    
+}
+const size_t dot_quote_program_arr[] = 
+{
+    FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_IMMEDIATE 
+    | ((size_t)'.' << 8)
+    | ((size_t)'"' << 16)
+    | ((size_t)'\0' << 24),
+    (size_t)then_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)forth_dot_quote_immediate_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET)
+};
