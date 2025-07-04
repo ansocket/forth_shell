@@ -1,0 +1,1 @@
+Here we have standart words of FORTH dictionary. I split it on some files, but it's a continuous list of definitions. 

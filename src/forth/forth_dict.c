@@ -40,7 +40,7 @@ forth_error_t forth_dict_init(size_t* dict_addr, size_t* last_rom_dict_addr)
 char* forth_dict_get_name(size_t* addr)
 {
     if(addr == NULL) return NULL;
-    char* res = (char*)addr;
+    char* res = ((char*)addr);
     return ++res;
 }
 size_t* forth_dict_get_link_addr(size_t* addr)

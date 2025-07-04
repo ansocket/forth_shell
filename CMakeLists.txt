@@ -6,7 +6,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_compile_options(-Wall)
 
 
-
 include(CTest)
 if(BUILD_TESTING)
     add_compile_options(-g)

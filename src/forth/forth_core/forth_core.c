@@ -6,6 +6,47 @@
 #include "stdint.h"
 #include "string.h"
 #include "stdio.h" /* for sprintf */
+
+extern const size_t plus_program_arr[];
+
+static void words_handler(vm_t* vm)
+{
+    size_t* def_ptr = (size_t*)*forth_get_variable_data_ptr(vm, forth_search(vm, "FORTH"));
+    size_t* runner = (size_t*)*(forth_dict_get_text_ptr(forth_search(vm, "OUTPUT")) + 1);
+    char* temp = NULL;
+    do {
+        char buffer[256];
+        temp = forth_dict_get_name(def_ptr);
+        sprintf(buffer, "%s ",temp);
+        *(--vm->sp) = strlen(buffer);
+        *(--vm->sp) = (size_t)buffer;
+        ((vm_ops_t)runner)(vm);
+        def_ptr = (size_t*)*forth_dict_get_link_addr(def_ptr);
+    }while (def_ptr != NULL);
+}
+static const size_t words_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT)
+    | ((size_t)'W' << 8)
+    | ((size_t)'O' << 16)
+    | ((size_t)'R' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'D' << 32)
+    | ((size_t)'S' << 40)
+    | ((size_t)'\0' << 48),
+#else
+     , ((size_t)'D')
+     | ((size_t)'S' << 8)
+     | ((size_t)'\0' << 16)
+     ,
+#endif
+(size_t)NULL,
+    VM_OP(VM_PUSH),
+    (size_t)words_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
 static const size_t dup_program_arr[] = 
 {
     (FORTH_DICT_FLAG_TEXT)
@@ -17,7 +58,7 @@ static const size_t dup_program_arr[] =
 #else
      , ((size_t)'\0'),
 #endif
-(size_t)NULL,
+(size_t)words_program_arr,
     VM_OP(VM_SP),
     VM_OP(VM_LOAD),
     VM_OP(VM_PUSH),
@@ -53,7 +94,7 @@ static const size_t swap_program_arr[] =
     VM_OP(VM_RET),
 };
 
-static const size_t false_program_arr[] = 
+const size_t false_program_arr[] = 
 {
     (FORTH_DICT_FLAG_CONSTANT)
     | ((size_t)'F' << 8)
@@ -73,15 +114,7 @@ static const size_t false_program_arr[] =
     0,
 };
 
-static const size_t plus_program_arr[] = 
-{
-    (FORTH_DICT_FLAG_TEXT) | 
-    ((size_t)'+' << 8) |
-    ((size_t)'\0' << 16),
-    (size_t)false_program_arr,
-    VM_OP(VM_ADD),
-    VM_OP(VM_RET)
-};
+
 const size_t true_program_arr[] = 
 {
     (FORTH_DICT_FLAG_CONSTANT) 
@@ -162,6 +195,11 @@ const size_t semicolon_program_arr[] =
 /* do START OF DEFINITION */
 static void forth_do_handler(vm_t* vm)
 {
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
     size_t* jmp_addr = (size_t*)*(vm->rsp++);
     size_t* i_var = forth_dict_get_text_ptr(forth_search(vm, "I"));
     *i_var = *vm->sp;
@@ -341,7 +379,11 @@ const size_t then_program_arr[] =
 static void forth_dot_quote_post_handler(vm_t* vm)
 {
     int len = *vm->sp++;
-    vm->pc += len/sizeof(size_t) + 1;
+    if((len % sizeof(size_t)) > 0)
+    {
+        len += sizeof(size_t) - (len % sizeof(size_t));
+    }
+    vm->pc += len/sizeof(size_t);
 }
 static void forth_dot_quote_immediate_handler(vm_t* vm)
 {
@@ -363,6 +405,8 @@ static void forth_dot_quote_immediate_handler(vm_t* vm)
     }
     *(str + len + 1) = '\0';
     *in += len + 2;
+    *(*copy_ptr)++ = VM_OP(VM_PUSH);
+    *(*copy_ptr)++ = len;
     *(*copy_ptr)++ = VM_OP(VM_PUSH);
     *(*copy_ptr)++ = len;
     *(*copy_ptr)++ = VM_OP(VM_PC);
@@ -400,6 +444,11 @@ const size_t dot_quote_program_arr[] =
 
 static void forth_dot_handler(vm_t* vm)
 {
+    if(vm->sp > (vm->stack_top - 1))
+    {
+        vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
     size_t value = *vm->sp++;
     char buffer[32];
     sprintf(buffer,"%ld ",value);
@@ -408,7 +457,6 @@ static void forth_dot_handler(vm_t* vm)
     *(--vm->sp) = (size_t)buffer;
     size_t* runner = (size_t*)*(forth_dict_get_text_ptr(forth_search(vm, "OUTPUT")) + 1);
     ((vm_ops_t)runner)(vm);
-    vm->sp++;
 }
 const size_t dot_program_arr[] = 
 {

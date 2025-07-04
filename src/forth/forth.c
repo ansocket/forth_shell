@@ -10,7 +10,7 @@ static int to_numeric(char* str,int32_t* value)
     if(str == NULL) return -1;
     unsigned long len = strlen(str);
     unsigned long i = 0;
-    if(str[0] == '-') 
+    if((str[0] == '-') && (len > 1)) 
     {
         i++;
     }
@@ -187,6 +187,9 @@ forth_error_t forth_compile(vm_t* vm, char* token)
             *(*copy_ptr)++ = VM_OP(VM_PUSH);
             *(*copy_ptr)++ = value;
             return FORTH_ERR_OK;
+        }
+        else {
+            return FORTH_WORD_NOT_FOUND;
         }
     }
     return FORTH_ERR_ERR;
