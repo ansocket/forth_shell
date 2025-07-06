@@ -206,7 +206,7 @@ forth_error_t forth_start_compiling(vm_t* vm)
             err = forth_compile(vm, token);
         }
     }
-    while(token != NULL);
+    while((token != NULL) && (err == FORTH_ERR_OK));
     size_t* sandbox = forth_search(vm, "SANDBOX");
     size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, sandbox);
     *(*copy_ptr)++ = VM_OP(VM_RET);

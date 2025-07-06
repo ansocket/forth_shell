@@ -172,7 +172,7 @@ void vm_and(vm_t* vm)
         vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
         return;
     }
-    *(vm->sp + 1) = *(vm->sp + 1) && *(vm->sp);
+    *(vm->sp + 1) = (*(vm->sp + 1) && *(vm->sp)) ? VM_TRUE : VM_FALSE;
     vm->sp++;
 }
 void vm_or(vm_t* vm)
@@ -182,7 +182,7 @@ void vm_or(vm_t* vm)
         vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
         return;
     }
-    *(vm->sp + 1) = *(vm->sp + 1) || *(vm->sp);
+    *(vm->sp + 1) = (*(vm->sp + 1) || *(vm->sp)) ? VM_TRUE : VM_FALSE;
     vm->sp++;
 }
 void vm_xor(vm_t* vm)
@@ -211,7 +211,7 @@ void vm_less(vm_t* vm)
         vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
         return;
     }
-    *(vm->sp + 1) = (*(vm->sp + 1) < *(vm->sp)) ? VM_TRUE : VM_FALSE;
+    *(vm->sp + 1) = ((int)*(vm->sp + 1) < (int)*(vm->sp)) ? VM_TRUE : VM_FALSE;
     vm->sp++;
 }
 void vm_greater(vm_t* vm)
@@ -221,7 +221,7 @@ void vm_greater(vm_t* vm)
         vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
         return;
     }
-    *(vm->sp + 1) = (*(vm->sp + 1) > *(vm->sp)) ? VM_TRUE : VM_FALSE;
+    *(vm->sp + 1) = ((int)*(vm->sp + 1) > (int)*(vm->sp)) ? VM_TRUE : VM_FALSE;
     vm->sp++;
 }
 void vm_str(vm_t* vm)

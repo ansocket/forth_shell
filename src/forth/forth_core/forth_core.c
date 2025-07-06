@@ -7,7 +7,162 @@
 #include "string.h"
 #include "stdio.h" /* for sprintf */
 
-extern const size_t plus_program_arr[];
+extern const size_t less_program_arr[];
+
+
+static void bracket_tick_handler(vm_t* vm)
+{
+    
+    size_t state = *forth_get_variable_data_ptr(vm, forth_search(vm, "STATE"));
+    size_t** copy_ptr = NULL;
+    if(state == FORTH_STATE_COMPILE)
+    {
+        size_t* here = forth_search(vm, "HERE");
+        copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, here);
+    }
+    else {
+        size_t* sandbox = forth_search(vm, "SANDBOX");
+        copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, sandbox);
+    }
+    char* token = forth_get_token(vm);
+    if(token == NULL)
+    {
+        vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW; /* TODO */
+        return;
+    }
+    *(*copy_ptr)++ = VM_OP(VM_PUSH);
+    *(*copy_ptr)++ = (size_t)token;
+}
+static const size_t bracket_tick_handler_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_IMMEDIATE)
+    | ((size_t)'[' << 8)
+    | ((size_t)'\'' << 16)
+    | ((size_t)']' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'\0' << 32),
+#else
+     , ((size_t)'\0' << 0),
+#endif
+(size_t)NULL,
+    VM_OP(VM_PUSH),
+    (size_t)bracket_tick_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
+static void constant_post_handler(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->sp++; /* That's because we put token into stack */
+        vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    char* token = (char*)*(vm->sp++);
+    int value = *(vm->sp++);
+    forth_add_constant(vm, token, value);
+}
+static void constant_handler(vm_t* vm)
+{
+    bracket_tick_handler(vm);
+    size_t state = *forth_get_variable_data_ptr(vm, forth_search(vm, "STATE"));
+    size_t** copy_ptr = NULL;
+    if(state == FORTH_STATE_COMPILE)
+    {
+        size_t* here = forth_search(vm, "HERE");
+        copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, here);
+    }
+    else {
+        size_t* sandbox = forth_search(vm, "SANDBOX");
+        copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, sandbox);
+    }
+    
+    
+    *(*copy_ptr)++ = VM_OP(VM_PUSH);
+    *(*copy_ptr)++ = (size_t)constant_post_handler;
+    *(*copy_ptr)++ = VM_OP(VM_C_EXEC);
+}
+static const size_t constant_handler_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_IMMEDIATE)
+    | ((size_t)'C' << 8)
+    | ((size_t)'O' << 16)
+    | ((size_t)'N' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'S' << 32)
+    | ((size_t)'T' << 40)
+    | ((size_t)'A' << 48)
+    | ((size_t)'N' << 56),
+     ((size_t)'T' << 0)
+    | ((size_t)'\0'<< 8),
+#else
+     , ((size_t)'S' << 0)
+    | ((size_t)'T' << 8)
+    | ((size_t)'A' << 16)
+    | ((size_t)'N' << 24),
+        ((size_t)'T' << 0)
+    | ((size_t)'\0'<< 8),
+#endif
+(size_t)bracket_tick_handler_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)constant_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
+static void variable_handler(vm_t* vm)
+{
+    char* token = forth_get_token(vm);
+    forth_add_variable(vm, token, 0);
+}
+static const size_t variable_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_IMMEDIATE)
+    | ((size_t)'V' << 8)
+    | ((size_t)'A' << 16)
+    | ((size_t)'R' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'I' << 32)
+    | ((size_t)'A' << 40)
+    | ((size_t)'B' << 48)
+    | ((size_t)'L' << 56),
+     ((size_t)'E' << 0)
+    | ((size_t)'\0'<< 8),
+#else
+     , ((size_t)'I' << 0)
+    | ((size_t)'A' << 8)
+    | ((size_t)'B' << 16)
+    | ((size_t)'L' << 24),
+        ((size_t)'E' << 0)
+    | ((size_t)'\0'<< 8),
+#endif
+(size_t)constant_handler_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)variable_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
+static const size_t fetch_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT)
+    | ((size_t)'@' << 8)
+    | ((size_t)'\0' << 16),
+    (size_t)variable_program_arr,
+    VM_OP(VM_LOAD),
+    VM_OP(VM_RET),
+};
+
+static const size_t store_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT)
+    | ((size_t)'!' << 8)
+    | ((size_t)'\0' << 16),
+    (size_t)fetch_program_arr,
+    VM_OP(VM_STR),
+    VM_OP(VM_RET),
+};
 
 static void words_handler(vm_t* vm)
 {
@@ -40,7 +195,7 @@ static const size_t words_program_arr[] =
      | ((size_t)'\0' << 16)
      ,
 #endif
-(size_t)NULL,
+(size_t)store_program_arr,
     VM_OP(VM_PUSH),
     (size_t)words_handler,
     VM_OP(VM_C_EXEC),
@@ -70,6 +225,11 @@ static const size_t dup_program_arr[] =
 
 void forth_swap_handler(vm_t* vm)
 {
+    if(vm->sp > (vm->stack_top - 2))
+    {
+        vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
     *vm->sp ^= *(vm->sp + 1);
     *(vm->sp + 1) ^= *vm->sp;
     *vm->sp ^= *(vm->sp + 1);
@@ -128,7 +288,7 @@ const size_t true_program_arr[] =
     ,((size_t)'E' << 0)
     | ((size_t)'\0' << 8),
 #endif
-    (size_t)plus_program_arr,
+    (size_t)less_program_arr,
     (size_t)-1,
 };
 /* : START OF DEFINITION */

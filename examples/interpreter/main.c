@@ -19,7 +19,7 @@ int get_string(char* data, int max_len)
     int i = 0;
     while (i < FORTH_SANDBOX_SIZE)
     {
-        *(data + i) = getchar();
+        *(data + i) = getc(stdin);
         if((*(data + i) == 8) && (i > 0))
         {
             i--;
@@ -47,6 +47,7 @@ void custom_function_arg(vm_t* vm)
 }
 int main()
 {
+    setvbuf(stdin, NULL, _IONBF, 0);
     vm_t* vm = (vm_t*)malloc(sizeof(vm_t));
     uint8_t* ram = (uint8_t*)malloc(8192);
     size_t* stack = (size_t*)malloc(256);
@@ -55,8 +56,8 @@ int main()
    // vm_set_trace_cb(vm, vm_trace);
     forth_init(vm);
     forth_add_custom_function(vm, "OUTPUT", forth_output_data);
-    forth_add_custom_function(vm, "CUSTOM", custom_function);
-    forth_add_custom_function(vm, "CUSTOM_ARG", custom_function_arg);
+    // forth_add_custom_function(vm, "CUSTOM", custom_function);
+    // forth_add_custom_function(vm, "CUSTOM_ARG", custom_function_arg);
     //forth_add_custom_function(vm, "INPUT", forth_input_data);
     strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\" Forth_shell by ansocket.\n \"");
     forth_error_t err = forth_start_compiling(vm);

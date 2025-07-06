@@ -2,7 +2,7 @@
 #include "forth_dict.h"
 #include "forth_inter.h"
 #include "string.h"
-static const char term[] = {' ','\n','\r','\0'};
+static const char term[] = {' ','\t','\n','\r','\0'};
 
 static int is_term(char ch)
 {
