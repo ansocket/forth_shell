@@ -30,8 +30,8 @@ static void bracket_tick_handler(vm_t* vm)
         vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW; /* TODO */
         return;
     }
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = (size_t)token;
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = (size_t)token;
 }
 static const size_t bracket_tick_handler_program_arr[] = 
 {
@@ -79,9 +79,9 @@ static void constant_handler(vm_t* vm)
     }
     
     
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = (size_t)constant_post_handler;
-    *(*copy_ptr)++ = VM_OP(VM_C_EXEC);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = (size_t)constant_post_handler;
+    *(++*copy_ptr) = VM_OP(VM_C_EXEC);
 }
 static const size_t constant_handler_program_arr[] = 
 {
@@ -336,7 +336,7 @@ static void forth_semicolon_handler(vm_t* vm)
     *state = FORTH_STATE_INTERPRET;
     size_t* here = forth_search(vm, "HERE");
     size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, here);
-    *(*copy_ptr)++ = VM_OP(VM_RET);
+    *(++*copy_ptr) = VM_OP(VM_RET);
 }
 
 const size_t semicolon_program_arr[] = 
@@ -377,18 +377,18 @@ static void forth_do_immediate_handler(vm_t* vm)
 {
     size_t* here = forth_search(vm, "HERE");
     size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, here);
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = 0;
-    *(*copy_ptr)++ = VM_OP(VM_RPUSH);
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = (size_t)forth_dict_get_text_ptr(forth_search(vm, "I"));
-    *(*copy_ptr)++ = VM_OP(VM_LOAD);
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = (size_t)forth_dict_get_text_ptr(forth_search(vm, "J"));
-    *(*copy_ptr)++ = VM_OP(VM_STR);
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = (size_t)forth_do_handler;
-    *(*copy_ptr)++ = VM_OP(VM_C_EXEC);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = 0;
+    *(++*copy_ptr) = VM_OP(VM_RPUSH);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = (size_t)forth_dict_get_text_ptr(forth_search(vm, "I"));
+    *(++*copy_ptr) = VM_OP(VM_LOAD);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = (size_t)forth_dict_get_text_ptr(forth_search(vm, "J"));
+    *(++*copy_ptr) = VM_OP(VM_STR);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = (size_t)forth_do_handler;
+    *(++*copy_ptr) = VM_OP(VM_C_EXEC);
 }
 
 const size_t do_program_arr[] = 
@@ -422,9 +422,9 @@ static void forth_loop_immediate_handler(vm_t* vm)
     /* FOR EXAMPLE: "10 3 DO ... LOOP" */
     size_t* here = forth_search(vm, "HERE");
     size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, here);
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = (size_t)forth_loop_handler;
-    *(*copy_ptr)++ = VM_OP(VM_C_EXEC);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = (size_t)forth_loop_handler;
+    *(++*copy_ptr) = VM_OP(VM_C_EXEC);
 }
 
 const size_t loop_program_arr[] = 
@@ -453,13 +453,13 @@ static void forth_if_immediate_handler(vm_t* vm)
 {
     size_t* here = forth_search(vm, "HERE");
     size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, here);
-    *(*copy_ptr)++ = VM_OP(VM_IT);
-    *(*copy_ptr)++ = VM_OP(VM_PUSH),
-    *(--vm->sp) = (size_t)(*copy_ptr)++;
-    *(*copy_ptr)++ = VM_OP(VM_JMP),
-    *(*copy_ptr)++ = VM_OP(VM_NONE);
-    *(*copy_ptr)++ = VM_OP(VM_NONE);
-    *(*copy_ptr)++ = VM_OP(VM_NONE);
+    *(++*copy_ptr) = VM_OP(VM_IT);
+    *(++*copy_ptr) = VM_OP(VM_PUSH),
+    *(--vm->sp) = (size_t)(++*copy_ptr);
+    *(++*copy_ptr) = VM_OP(VM_JMP),
+    *(++*copy_ptr) = VM_OP(VM_NONE);
+    *(++*copy_ptr) = VM_OP(VM_NONE);
+    *(++*copy_ptr) = VM_OP(VM_NONE);
 }
 const size_t if_program_arr[] = 
 {
@@ -481,10 +481,10 @@ static void forth_else_immediate_handler(vm_t* vm)
     size_t* here = forth_search(vm, "HERE");
     size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, here);
     size_t* jmp_addr = (size_t*)*vm->sp++;
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(--vm->sp) = (size_t)(*copy_ptr)++;
-    *(*copy_ptr)++ = VM_OP(VM_JMP);
-    *jmp_addr = (size_t)(*copy_ptr);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(--vm->sp) = (size_t)(++*copy_ptr);
+    *(++*copy_ptr) = VM_OP(VM_JMP);
+    *jmp_addr = (size_t)(*copy_ptr + 1);
 }
 const size_t else_program_arr[] = 
 {
@@ -512,7 +512,7 @@ static void forth_then_immediate_handler(vm_t* vm)
 {
     size_t* here = forth_search(vm, "HERE");
     size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, here);
-    *(size_t*)(*vm->sp++) = (size_t)(*copy_ptr);
+    *(size_t*)(*vm->sp++) = (size_t)(++*copy_ptr);
 }
 const size_t then_program_arr[] = 
 {
@@ -565,27 +565,27 @@ static void forth_dot_quote_immediate_handler(vm_t* vm)
     }
     *(str + len + 1) = '\0';
     *in += len + 2;
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = len;
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = len;
-    *(*copy_ptr)++ = VM_OP(VM_PC);
-    *(*copy_ptr)++ = VM_OP(VM_LOAD);
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = 10*sizeof(size_t);
-    *(*copy_ptr)++ = VM_OP(VM_ADD);
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = (size_t)forth_dict_get_text_ptr(forth_search(vm, "OUTPUT"));
-    *(*copy_ptr)++ = VM_OP(VM_CALL);
-    *(*copy_ptr)++ = VM_OP(VM_PUSH);
-    *(*copy_ptr)++ = (size_t)forth_dot_quote_post_handler;
-    *(*copy_ptr)++ = VM_OP(VM_C_EXEC);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = len;
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = len;
+    *(++*copy_ptr) = VM_OP(VM_PC);
+    *(++*copy_ptr) = VM_OP(VM_LOAD);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = 10*sizeof(size_t);
+    *(++*copy_ptr) = VM_OP(VM_ADD);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = (size_t)forth_dict_get_text_ptr(forth_search(vm, "OUTPUT"));
+    *(++*copy_ptr) = VM_OP(VM_CALL);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = (size_t)forth_dot_quote_post_handler;
+    *(++*copy_ptr) = VM_OP(VM_C_EXEC);
 
-    memcpy((char*)(*copy_ptr),str,len);
-    *(char**)copy_ptr += len;
+    memcpy((char*)(++*copy_ptr),str,len);
+    *(char**)copy_ptr += len - 1;
     if(((size_t)(*copy_ptr) % sizeof(size_t)) > 0)
     {
-        *(char**)copy_ptr += sizeof(size_t) - ((size_t)(*copy_ptr) % sizeof(size_t));
+        *(char**)copy_ptr -=  ((size_t)(*copy_ptr) % sizeof(size_t));
     } 
     
 }
@@ -611,7 +611,7 @@ static void forth_dot_handler(vm_t* vm)
     }
     size_t value = *vm->sp++;
     char buffer[32];
-    sprintf(buffer,"%ld ",value);
+    snprintf(buffer,32,"%ld ",value);
     /* TODO: BASE */
     *(--vm->sp) = strlen(buffer);
     *(--vm->sp) = (size_t)buffer;

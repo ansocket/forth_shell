@@ -4,6 +4,10 @@
 #include "string.h"
 #include "vm.h"
 
+uint8_t ram[8192];
+size_t stack[256/sizeof(size_t)];
+size_t rstack[256/sizeof(size_t)];
+vm_t vm_static;
 void forth_output_data(vm_t* vm)
 {
     /* stack -> ADDR LENGTH */
@@ -48,10 +52,7 @@ void custom_function_arg(vm_t* vm)
 int main()
 {
     setvbuf(stdin, NULL, _IONBF, 0);
-    vm_t* vm = (vm_t*)malloc(sizeof(vm_t));
-    uint8_t* ram = (uint8_t*)malloc(8192);
-    size_t* stack = (size_t*)malloc(256);
-    size_t* rstack = (size_t*)malloc(256);
+    vm_t* vm  = &vm_static;
     vm_init(vm,ram,8192,stack,256/sizeof(size_t),rstack,256/sizeof(size_t));
    // vm_set_trace_cb(vm, vm_trace);
     forth_init(vm);
@@ -67,20 +68,18 @@ int main()
 
     while(1)
     {
-        strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\" \n> \"");
-        err = forth_start_compiling(vm);
-        if(err == FORTH_ERR_OK)
+        size_t state = *forth_get_variable_data_ptr(vm, forth_search(vm, "STATE"));
+        if(state == FORTH_STATE_INTERPRET)
         {
-            vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
-            if((vm->exceptions_flags & VM_EXCEPTION_STACK_UNDERFLOW) == VM_EXCEPTION_STACK_UNDERFLOW)
+            strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\" \n> \"");
+            err = forth_start_compiling(vm);
+            if(err == FORTH_ERR_OK)
             {
-                forth_vm_reload(vm);
-                strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\" STACK UNDERFLOW \"");
-                err = forth_start_compiling(vm);
                 vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
+                forth_vm_reload(vm);
             }
         }
-        forth_vm_reload(vm);
+        
         get_string((char*)vm->ram + FORTH_STRBUF_OFFSET,255);
         err = forth_start_compiling(vm);
         if(err == FORTH_ERR_OK)
@@ -101,10 +100,14 @@ int main()
                 vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
             }
             else {
-                forth_vm_reload(vm);
-                strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\"  OK \"");
-                err = forth_start_compiling(vm);
-                vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
+                size_t state = *forth_get_variable_data_ptr(vm, forth_search(vm, "STATE"));
+                if(state == FORTH_STATE_INTERPRET)
+                {
+                    forth_vm_reload(vm);
+                    strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\"  OK \"");
+                    err = forth_start_compiling(vm);
+                    vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
+                }
                 }
         }
         else if(err == FORTH_WORD_NOT_FOUND){
@@ -122,8 +125,4 @@ int main()
         }
         forth_vm_reload(vm);
     }
-    free(vm);
-    free(ram);
-    free(stack);
-    free(rstack);
 }

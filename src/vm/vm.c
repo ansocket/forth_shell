@@ -25,9 +25,26 @@ int vm_start(vm_t* vm, size_t* addr)
     {
         if(vm->exceptions_flags != 0)
         {
+            vm->rsp = vm->rstack_top;
             if((vm->exceptions_flags & VM_EXCEPTION_BYE) == VM_EXCEPTION_BYE)
             {
                 return VM_EXCEPTION_BYE;
+            }
+            else if((vm->exceptions_flags & VM_EXCEPTION_STACK_UNDERFLOW) == VM_EXCEPTION_STACK_UNDERFLOW)
+            {
+                return VM_EXCEPTION_STACK_UNDERFLOW;
+            }
+            else if((vm->exceptions_flags & VM_EXCEPTION_RSTACK_UNDERFLOW) == VM_EXCEPTION_RSTACK_UNDERFLOW)
+            {
+                return VM_EXCEPTION_RSTACK_UNDERFLOW;
+            }
+            else if((vm->exceptions_flags & VM_EXCEPTION_ZERO_DIVISION) == VM_EXCEPTION_ZERO_DIVISION)
+            {
+                return VM_EXCEPTION_ZERO_DIVISION;
+            }
+            else if((vm->exceptions_flags & VM_EXCEPTION_MEMFAULT) == VM_EXCEPTION_MEMFAULT)
+            {
+                return VM_EXCEPTION_MEMFAULT;
             }
         }
         ops[*vm->pc](vm);

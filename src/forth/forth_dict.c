@@ -22,7 +22,7 @@ size_t* forth_dict_add_header(size_t* here, uint8_t flags, const char* name, siz
     temp = align_for(temp, sizeof(size_t));
     *(size_t*)temp = (size_t)link_addr;
     here = (size_t*)temp;
-    return ++here;
+    return here;
 }
 
 forth_error_t forth_dict_init(size_t* dict_addr, size_t* last_rom_dict_addr)
@@ -30,11 +30,12 @@ forth_error_t forth_dict_init(size_t* dict_addr, size_t* last_rom_dict_addr)
     if(dict_addr == NULL) return FORTH_ERR_ERR;
     size_t* here = dict_addr;
     here = forth_dict_add_header(here,FORTH_DICT_FLAG_VARIABLE,"FORTH",last_rom_dict_addr);
+    here++;
     *here = (size_t)(here + 1);
     here++;
     here = forth_dict_add_header(here,FORTH_DICT_FLAG_VARIABLE,"HERE",dict_addr);
-    *here = (size_t)(here + 1);
     here++;
+    *here = (size_t)(here);
     return FORTH_ERR_OK;
 }
 char* forth_dict_get_name(size_t* addr)

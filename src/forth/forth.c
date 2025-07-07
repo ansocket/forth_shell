@@ -31,7 +31,7 @@ forth_error_t forth_init(vm_t* vm)
     forth_add_variable(vm,">IN",0);
     memset(vm->ram + FORTH_STRBUF_OFFSET,'\0',FORTH_STRBUF_SIZE);
     forth_add_variable(vm,"STATE",FORTH_STATE_INTERPRET);
-    forth_add_variable(vm,"SANDBOX",(size_t)(vm->ram + FORTH_SANDBOX_OFFSET));
+    forth_add_variable(vm,"SANDBOX",(size_t)(vm->ram + FORTH_SANDBOX_OFFSET - sizeof(size_t)));
     forth_add_variable(vm,"BASE",(size_t)(10));
     forth_add_constant(vm, "I", -1);
     forth_add_constant(vm, "J", -1);
@@ -52,10 +52,10 @@ size_t* forth_add_variable(vm_t* vm, const char* name, size_t value)
     size_t** forth_addr = (size_t**)forth_dict_get_text_ptr( forth_search(vm, "FORTH"));
     if((here_addr == NULL) || (forth_addr == NULL)) return NULL;
     size_t* link = *forth_addr;
-    *forth_addr = *here_addr;
+    *forth_addr = ++*here_addr;
     *here_addr = forth_dict_add_header(*here_addr,FORTH_DICT_FLAG_VARIABLE,name,link);
+    (*here_addr)++;
     **here_addr = value;
-    *here_addr += 1;
     return *forth_addr;
 }
 
@@ -65,10 +65,10 @@ size_t* forth_add_constant(vm_t* vm, const char* name, size_t value)
     size_t** forth_addr = (size_t**)forth_dict_get_text_ptr( forth_search(vm, "FORTH"));
     if((here_addr == NULL) || (forth_addr == NULL)) return NULL;
     size_t* link = *forth_addr;
-    *forth_addr = *here_addr;
+    *forth_addr = ++*here_addr;
     *here_addr = forth_dict_add_header(*here_addr,FORTH_DICT_FLAG_CONSTANT,name,link);
+    (*here_addr)++;
     **here_addr = value;
-    *here_addr += 1;
     return *forth_addr;
 }
 size_t* forth_add_definition(vm_t* vm, const char* name)
@@ -77,7 +77,7 @@ size_t* forth_add_definition(vm_t* vm, const char* name)
     size_t** forth_addr = (size_t**)forth_dict_get_text_ptr( forth_search(vm, "FORTH"));
     if((here_addr == NULL) || (forth_addr == NULL)) return NULL;
     size_t* link = *forth_addr;
-    *forth_addr = *here_addr;
+    *forth_addr = ++*here_addr;
     *here_addr = forth_dict_add_header(*here_addr,FORTH_DICT_FLAG_TEXT,name,link);
     return *forth_addr;
 }
@@ -163,19 +163,19 @@ forth_error_t forth_compile(vm_t* vm, char* token)
         {
             if((flags & FORTH_DICT_FLAG_VARIABLE) == FORTH_DICT_FLAG_VARIABLE)
             {
-                *(*copy_ptr)++ = VM_OP(VM_PUSH);
-                *(*copy_ptr)++ = (size_t)forth_get_variable_data_ptr(vm, command);
+                *(++*copy_ptr) = VM_OP(VM_PUSH);
+                *(++*copy_ptr) = (size_t)forth_get_variable_data_ptr(vm, command);
             }
             else if((flags & FORTH_DICT_FLAG_CONSTANT) == FORTH_DICT_FLAG_CONSTANT)
             {
-                *(*copy_ptr)++ = VM_OP(VM_PUSH);
-                *(*copy_ptr)++ = (size_t)forth_dict_get_text_ptr(command);
-                *(*copy_ptr)++ = VM_OP(VM_LOAD);
+                *(++*copy_ptr) = VM_OP(VM_PUSH);
+                *(++*copy_ptr) = (size_t)forth_dict_get_text_ptr(command);
+                *(++*copy_ptr) = VM_OP(VM_LOAD);
             }
             else {
-                *(*copy_ptr)++ = VM_OP(VM_PUSH);
-                *(*copy_ptr)++ = (size_t)forth_dict_get_text_ptr(command);
-                *(*copy_ptr)++ = VM_OP(VM_CALL);
+                *(++*copy_ptr) = VM_OP(VM_PUSH);
+                *(++*copy_ptr) = (size_t)forth_dict_get_text_ptr(command);
+                *(++*copy_ptr) = VM_OP(VM_CALL);
             }
             return FORTH_ERR_OK;
         }
@@ -184,8 +184,8 @@ forth_error_t forth_compile(vm_t* vm, char* token)
         int32_t value = 0;
         if(to_numeric(token,&value) == 0)
         {
-            *(*copy_ptr)++ = VM_OP(VM_PUSH);
-            *(*copy_ptr)++ = value;
+            *(++*copy_ptr) = VM_OP(VM_PUSH);
+            *(++*copy_ptr) = value;
             return FORTH_ERR_OK;
         }
         else {
@@ -209,7 +209,7 @@ forth_error_t forth_start_compiling(vm_t* vm)
     while((token != NULL) && (err == FORTH_ERR_OK));
     size_t* sandbox = forth_search(vm, "SANDBOX");
     size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, sandbox);
-    *(*copy_ptr)++ = VM_OP(VM_RET);
+    *(++*copy_ptr) = VM_OP(VM_RET);
     return err;
 }
 
@@ -219,7 +219,7 @@ forth_error_t forth_vm_reload(vm_t* vm)
     vm->exceptions_flags = 0;
     size_t* sandbox = forth_search(vm, "SANDBOX");
     size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, sandbox);
-    *copy_ptr = (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET);
+    *copy_ptr = (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET - sizeof(size_t));
     size_t* in_ptr = forth_search(vm, ">IN");
     in_ptr = forth_get_variable_data_ptr(vm, in_ptr);
     *in_ptr = 0;
@@ -233,11 +233,11 @@ size_t* forth_add_custom_function(vm_t* vm, const char* name, vm_ops_t func)
     size_t** forth_addr = (size_t**)forth_dict_get_text_ptr( forth_search(vm, "FORTH"));
     if((here_addr == NULL) || (forth_addr == NULL)) return NULL;
     size_t* link = *forth_addr;
-    *forth_addr = *here_addr;
+    *forth_addr = ++*here_addr;
     *here_addr = forth_dict_add_header(*here_addr,FORTH_DICT_FLAG_TEXT,name,link);
-    *(*here_addr)++ = VM_OP(VM_PUSH);
-    *(*here_addr)++ = (size_t)func;
-    *(*here_addr)++ = VM_OP(VM_C_EXEC);
-    *(*here_addr)++ = VM_OP(VM_RET);
+    *(++*here_addr) = VM_OP(VM_PUSH);
+    *(++*here_addr) = (size_t)func;
+    *(++*here_addr) = VM_OP(VM_C_EXEC);
+    *(++*here_addr) = VM_OP(VM_RET);
     return *forth_addr;
 }
