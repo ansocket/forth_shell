@@ -9,6 +9,109 @@
 
 extern const size_t less_program_arr[];
 
+static void aligned_handler(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 1))
+    {
+        vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    size_t len = *vm->sp++;
+    if((len % sizeof(size_t)) > 0)
+    {
+        len += sizeof(size_t) - (len % sizeof(size_t));
+    }
+    *(--vm->sp) = len;
+    
+}
+static const size_t aligned_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT)
+    | ((size_t)'A' << 8)
+    | ((size_t)'L' << 16)
+    | ((size_t)'I' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'G' << 32)
+    | ((size_t)'N' << 40)
+    | ((size_t)'E' << 48)
+    | ((size_t)'D' << 56),
+    ((size_t)'\0' << 0),
+#else
+    , ((size_t)'G' << 0)
+    | ((size_t)'N' << 8)
+    | ((size_t)'E' << 16)
+    | ((size_t)'D' << 24),
+        ((size_t)'\0' << 0),
+#endif
+(size_t)NULL,
+    VM_OP(VM_PUSH),
+    (size_t)aligned_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
+static void align_handler(vm_t* vm)
+{
+    size_t** here = (size_t**)forth_get_variable_data_ptr(vm, forth_search(vm, "HERE"));
+    if((*(size_t*)here % sizeof(size_t)) > 0)
+    {
+        *(size_t*)here += sizeof(size_t) - (*(size_t*)here % sizeof(size_t));
+    }
+}
+static const size_t align_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT)
+    | ((size_t)'A' << 8)
+    | ((size_t)'L' << 16)
+    | ((size_t)'I' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'G' << 32)
+    | ((size_t)'N' << 40)
+    | ((size_t)'\0' << 48),
+#else
+    , ((size_t)'G' << 0)
+    | ((size_t)'N' << 8)
+    | ((size_t)'\0' << 16),
+#endif
+(size_t)aligned_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)align_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
+static void allot_handler(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 1))
+    {
+        vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    size_t len = *vm->sp++;
+    size_t** here = (size_t**)forth_get_variable_data_ptr(vm, forth_search(vm, "HERE"));
+    *(size_t*)here += len;
+}
+static const size_t allot_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT)
+    | ((size_t)'A' << 8)
+    | ((size_t)'L' << 16)
+    | ((size_t)'L' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'O' << 32)
+    | ((size_t)'T' << 40)
+    | ((size_t)'\0' << 48),
+#else
+    , ((size_t)'O' << 0)
+    | ((size_t)'T' << 8)
+    | ((size_t)'\0' << 16),
+#endif
+(size_t)align_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)allot_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
 
 static void bracket_tick_handler(vm_t* vm)
 {
@@ -33,7 +136,7 @@ static void bracket_tick_handler(vm_t* vm)
     *(++*copy_ptr) = VM_OP(VM_PUSH);
     *(++*copy_ptr) = (size_t)token;
 }
-static const size_t bracket_tick_handler_program_arr[] = 
+static const size_t bracket_tick_program_arr[] = 
 {
     (FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_IMMEDIATE)
     | ((size_t)'[' << 8)
@@ -44,7 +147,7 @@ static const size_t bracket_tick_handler_program_arr[] =
 #else
      , ((size_t)'\0' << 0),
 #endif
-(size_t)NULL,
+(size_t)allot_program_arr,
     VM_OP(VM_PUSH),
     (size_t)bracket_tick_handler,
     VM_OP(VM_C_EXEC),
@@ -104,7 +207,7 @@ static const size_t constant_handler_program_arr[] =
         ((size_t)'T' << 0)
     | ((size_t)'\0'<< 8),
 #endif
-(size_t)bracket_tick_handler_program_arr,
+(size_t)bracket_tick_program_arr,
     VM_OP(VM_PUSH),
     (size_t)constant_handler,
     VM_OP(VM_C_EXEC),
