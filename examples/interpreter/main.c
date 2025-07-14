@@ -1,128 +1,55 @@
 #include "stdio.h"
-#include "stdlib.h"
 #include "forth.h"
-#include "string.h"
 #include "vm.h"
+#include <termios.h>            //termios, TCSANOW, ECHO, ICANON
+#include <unistd.h>     //STDIN_FILENO
+#include "forth_dict.h"
+#include "forth_inter.h"
 
 uint8_t ram[8192];
 size_t stack[256/sizeof(size_t)];
 size_t rstack[256/sizeof(size_t)];
-vm_t vm_static;
-void forth_output_data(vm_t* vm)
+vm_t vm;
+void forth_emit(vm_t* vm)
 {
-    /* stack -> ADDR LENGTH */
-    char* data = (char*)*vm->sp++;
-    int len = *vm->sp++;
-    for(int i = 0; i < len; i++)
-    {
-        putchar(data[i]);
-    }
+    putchar((char)*vm->sp++);
 }
-int get_string(char* data, int max_len)
+void forth_key(vm_t* vm)
 {
-    int i = 0;
-    while (i < FORTH_SANDBOX_SIZE)
-    {
-        *(data + i) = getc(stdin);
-        if((*(data + i) == 8) && (i > 0))
-        {
-            i--;
-        }
-        else {
-            if(*(data + i) == '\n')
-            {
-                *(data + i) = '\0';
-                break;
-            }
-            i++;
-        }
-    }
-    
-    return i;
+    *(--vm->sp) = getchar();
 }
+
 void custom_function(vm_t* vm)
 {
-    printf("Я вообще не связанная ни с чем функция\n");
-}
-void custom_function_arg(vm_t* vm)
-{
-    size_t arg = *vm->sp++;
-    printf("Я вообще не связанная ни с чем функция, но умею получать аргументы. Аргумент: %ld\n", arg);
+    vm_ops_t output = (vm_ops_t)*(forth_dict_get_text_ptr(forth_search(vm, "OUTPUT")) + 1);
+    char buffer[] = "Я вообще не связанная ни с чем функция\n";
+    *--vm->sp =  sizeof(buffer);
+    *--vm->sp =  (size_t)buffer;
+    output(vm);
 }
 int main()
 {
-    setvbuf(stdin, NULL, _IONBF, 0);
-    vm_t* vm  = &vm_static;
-    vm_init(vm,ram,8192,stack,256/sizeof(size_t),rstack,256/sizeof(size_t));
-   // vm_set_trace_cb(vm, vm_trace);
-    forth_init(vm);
-    forth_add_custom_function(vm, "OUTPUT", forth_output_data);
-    // forth_add_custom_function(vm, "CUSTOM", custom_function);
-    // forth_add_custom_function(vm, "CUSTOM_ARG", custom_function_arg);
-    //forth_add_custom_function(vm, "INPUT", forth_input_data);
-    strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\" Forth_shell by ansocket.\n \"");
-    forth_error_t err = forth_start_compiling(vm);
-    if(err != FORTH_ERR_OK) return -1;
-    vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
-    forth_vm_reload(vm);
+    static struct termios oldt, newt;
+    tcgetattr( STDIN_FILENO, &oldt);
+    /*now the settings will be copied*/
+    newt = oldt;
 
-    while(1)
+    /*ICANON normally takes care that one line at a time will be processed
+    that means it will return if it sees a "\n" or an EOF or an EOL*/
+    newt.c_lflag &= ~(ICANON | ECHO);          
+
+    /*Those new settings will be set to STDIN
+    TCSANOW tells tcsetattr to change attributes immediately. */
+    tcsetattr( STDIN_FILENO, TCSANOW, &newt);
+
+    vm_init(&vm,ram,8192,stack,256/sizeof(size_t),rstack,256/sizeof(size_t));
+    
+    forth_interpreter_init(&vm,forth_key,forth_emit);
+    forth_add_custom_function(&vm, "CUSTOM", custom_function);
+    forth_error_t err = FORTH_ERR_OK;
+    while(err == FORTH_ERR_OK)
     {
-        size_t state = *forth_get_variable_data_ptr(vm, forth_search(vm, "STATE"));
-        if(state == FORTH_STATE_INTERPRET)
-        {
-            strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\" \n> \"");
-            err = forth_start_compiling(vm);
-            if(err == FORTH_ERR_OK)
-            {
-                vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
-                forth_vm_reload(vm);
-            }
-        }
-        
-        get_string((char*)vm->ram + FORTH_STRBUF_OFFSET,255);
-        err = forth_start_compiling(vm);
-        if(err == FORTH_ERR_OK)
-        {
-            vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
-            if((vm->exceptions_flags & VM_EXCEPTION_STACK_UNDERFLOW) == VM_EXCEPTION_STACK_UNDERFLOW)
-            {
-                forth_vm_reload(vm);
-                strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\" STACK UNDERFLOW \"");
-                err = forth_start_compiling(vm);
-                vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
-            }
-            else if((vm->exceptions_flags & VM_EXCEPTION_ZERO_DIVISION) == VM_EXCEPTION_ZERO_DIVISION)
-            {
-                forth_vm_reload(vm);
-                strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\" ZERO DIVISION \"");
-                err = forth_start_compiling(vm);
-                vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
-            }
-            else {
-                size_t state = *forth_get_variable_data_ptr(vm, forth_search(vm, "STATE"));
-                if(state == FORTH_STATE_INTERPRET)
-                {
-                    forth_vm_reload(vm);
-                    strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\"  OK \"");
-                    err = forth_start_compiling(vm);
-                    vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
-                }
-                }
-        }
-        else if(err == FORTH_WORD_NOT_FOUND){
-            forth_vm_reload(vm);
-            strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\" WORD NOT FOUND \"");
-            err = forth_start_compiling(vm);
-            vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
-        }
-        else if(err == FORTH_COMPILE_ONLY_ERROR)
-        {
-            forth_vm_reload(vm);
-            strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\" THIS WORD IS COMPILE-ONLY \"");
-            err = forth_start_compiling(vm);
-            vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
-        }
-        forth_vm_reload(vm);
+        err = forth_interpreter_process(&vm);
     }
+    tcsetattr( STDIN_FILENO, TCSANOW, &oldt);
 }
