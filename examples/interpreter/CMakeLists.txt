@@ -1,3 +1,3 @@
 add_executable(examples_interpreter main.c)
 target_link_libraries(examples_interpreter PRIVATE forth)
-add_custom_command(TARGET examples_interpreter POST_BUILD COMMAND size ${CMAKE_BINARY_DIR}/examples/interpreter/examples_interpreter)
+add_custom_command(TARGET examples_interpreter POST_BUILD COMMAND size ${CMAKE_BINARY_DIR}/examples/interpreter/examples_interpreter.exe)

@@ -29,7 +29,8 @@ typedef enum
     FORTH_ERR_OK,
     FORTH_ERR_ERR,
     FORTH_COMPILE_ONLY_ERROR,
-    FORTH_WORD_NOT_FOUND
+    FORTH_WORD_NOT_FOUND,
+    FORTH_EXIT
 }forth_error_t;
 
 

@@ -1,11 +1,15 @@
 #include "stdio.h"
 #include "forth.h"
 #include "vm.h"
-#include <termios.h>            //termios, TCSANOW, ECHO, ICANON
-#include <unistd.h>     //STDIN_FILENO
 #include "forth_dict.h"
 #include "forth_inter.h"
 
+#if __WIN32
+#include "conio.h"
+#else
+#include <termios.h>            //termios, TCSANOW, ECHO, ICANON
+#include <unistd.h>     //STDIN_FILENO
+#endif
 uint8_t ram[8192];
 size_t stack[256/sizeof(size_t)];
 size_t rstack[256/sizeof(size_t)];
@@ -16,7 +20,11 @@ void forth_emit(vm_t* vm)
 }
 void forth_key(vm_t* vm)
 {
+#if __WIN32
+    *(--vm->sp) = getch();
+#else
     *(--vm->sp) = getchar();
+#endif
 }
 
 void custom_function(vm_t* vm)
@@ -29,6 +37,7 @@ void custom_function(vm_t* vm)
 }
 int main()
 {
+#if !__WIN32
     static struct termios oldt, newt;
     tcgetattr( STDIN_FILENO, &oldt);
     /*now the settings will be copied*/
@@ -41,7 +50,7 @@ int main()
     /*Those new settings will be set to STDIN
     TCSANOW tells tcsetattr to change attributes immediately. */
     tcsetattr( STDIN_FILENO, TCSANOW, &newt);
-
+#endif
     vm_init(&vm,ram,8192,stack,256/sizeof(size_t),rstack,256/sizeof(size_t));
     
     forth_interpreter_init(&vm,forth_key,forth_emit);
@@ -51,5 +60,7 @@ int main()
     {
         err = forth_interpreter_process(&vm);
     }
+#if !__WIN32
     tcsetattr( STDIN_FILENO, TCSANOW, &oldt);
+#endif
 }

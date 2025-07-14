@@ -41,8 +41,9 @@ char* forth_inter_token(char** buf)
     return res;
 }
 
-static int get_string(vm_t* vm, char* data, int max_len)
+static forth_error_t get_string(vm_t* vm, char* data, int max_len)
 {
+    forth_error_t err = FORTH_ERR_OK;
     vm_ops_t key = (vm_ops_t)*(forth_dict_get_text_ptr(forth_search(vm, "KEY")) + 1);
     vm_ops_t emit = (vm_ops_t)*(forth_dict_get_text_ptr(forth_search(vm, "EMIT")) + 1);
     int i = 0;
@@ -51,34 +52,47 @@ static int get_string(vm_t* vm, char* data, int max_len)
         key(vm);
         int ch = *vm->sp++;
 
-        if(ch == '\n')
+        switch(ch)
         {
-            *(data + i) = '\0';
-            *(data + i + 1) = '\0';
+            case '\n':
+                *(data + i) = '\0';
+                *(data + i + 1) = '\0';
+                goto exit;
+            break;
+            case '\r':
+                *(data + i) = '\0';
+                *(data + i + 1) = '\0';
+                goto exit;
+            break;
+            case 3:
+                err = FORTH_EXIT;
+                goto exit;
+            break;
+            case 127:
+            if(i > 0)
+                {
+                    *(--vm->sp) = '\b';
+                    emit(vm);
+                    *(--vm->sp) = ' ';
+                    emit(vm);
+                    *(--vm->sp) = '\b';
+                    emit(vm);
+                    i--;
+                }
+            break;
+            default:
+                *(--vm->sp) = ch;
+                emit(vm);
+                *(data + i) = ch;
+                i++;
             break;
         }
-        if(ch == 127)
-        {
-            if(i > 0)
-            {
-                *(--vm->sp) = '\b';
-                emit(vm);
-                *(--vm->sp) = ' ';
-                emit(vm);
-                *(--vm->sp) = '\b';
-                emit(vm);
-                i--;
-            }
-            continue;
-        }
-        *(--vm->sp) = ch;
-        emit(vm);
-        *(data + i) = ch;
-        i++;
+
     }
+exit:
     *(--vm->sp) = '\n';
     emit(vm);
-    return i;
+    return err;
 }
 
 void forth_output_data(vm_t* vm)
@@ -100,7 +114,7 @@ forth_error_t forth_interpreter_init(vm_t* vm, vm_ops_t key, vm_ops_t emit)
     forth_add_custom_function(vm, "EMIT", emit);
     forth_add_custom_function(vm, "KEY", key);
 
-    forth_add_custom_function(vm, "OUTPUT", forth_output_data);
+    forth_add_custom_function(vm, "OUTPUT", forth_output_data); /* ?? */
 
     strcpy((char*)vm->ram + FORTH_STRBUF_OFFSET,".\" Forth_shell by ansocket.\n \"");
     forth_error_t err = forth_start_compiling(vm);
@@ -125,7 +139,8 @@ forth_error_t forth_interpreter_process(vm_t *vm)
             }
         }
         
-        get_string(vm,(char*)vm->ram + FORTH_STRBUF_OFFSET,255);
+        err = get_string(vm,(char*)vm->ram + FORTH_STRBUF_OFFSET,255);
+        if(err == FORTH_EXIT) return FORTH_EXIT;
         err = forth_start_compiling(vm);
         if(err == FORTH_ERR_OK)
         {

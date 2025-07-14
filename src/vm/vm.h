@@ -13,7 +13,6 @@ extern "C" {
 #define VM_EXCEPTION_STACK_UNDERFLOW        (1 << 2)
 #define VM_EXCEPTION_RSTACK_UNDERFLOW       (1 << 3)
 #define VM_EXCEPTION_BYE                    (1 << 4)
-
 typedef struct vm vm_t;
 typedef void (*vm_ops_t)(vm_t* vm);
 
