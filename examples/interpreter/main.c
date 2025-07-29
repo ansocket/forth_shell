@@ -37,6 +37,7 @@ void custom_function(vm_t* vm)
 }
 int main()
 {
+    setvbuf(stdout, NULL,_IONBF,0);
 #if !__WIN32
     static struct termios oldt, newt;
     tcgetattr( STDIN_FILENO, &oldt);

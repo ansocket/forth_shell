@@ -9,6 +9,25 @@
 
 extern const size_t less_program_arr[];
 
+static void cr_handler(vm_t* vm)
+{
+    *(--vm->sp) = '\n';
+    size_t* runner = (size_t*)*(forth_dict_get_text_ptr(forth_search(vm, "EMIT")) + 1);
+    ((vm_ops_t)runner)(vm);
+}
+static const size_t cr_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT)
+    | ((size_t)'C' << 8)
+    | ((size_t)'R' << 16)
+    | ((size_t)'\0' << 24),
+    (size_t)NULL,
+    VM_OP(VM_PUSH),
+    (size_t)cr_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
 static void paren_immediate_handler(vm_t* vm)
 {
     size_t* in = forth_get_variable_data_ptr(vm, forth_search(vm, ">IN"));
@@ -29,7 +48,7 @@ static const size_t paren_program_arr[] =
     (FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_IMMEDIATE)
     | ((size_t)'(' << 8)
     | ((size_t)'\0' << 16),
-    (size_t)NULL,
+    (size_t)cr_program_arr,
     VM_OP(VM_PUSH),
     (size_t)paren_immediate_handler,
     VM_OP(VM_C_EXEC),

@@ -51,40 +51,128 @@ static forth_error_t get_string(vm_t* vm, char* data, int max_len)
     {
         key(vm);
         int ch = *vm->sp++;
-
         switch(ch)
         {
             case '\n':
-                *(data + i) = '\0';
-                *(data + i + 1) = '\0';
+            {
+                int len = strlen(data);
+                data[len] = '\0';
+                data[len + 1] = '\0';
+            }
                 goto exit;
             break;
             case '\r':
-                *(data + i) = '\0';
-                *(data + i + 1) = '\0';
                 goto exit;
             break;
             case 3:
                 err = FORTH_EXIT;
                 goto exit;
             break;
-            case 127:
-            if(i > 0)
+            case 127: /* backspace */
+                if(i > 0)
                 {
                     *(--vm->sp) = '\b';
                     emit(vm);
+                    
+                    int len = strlen(data + i) + 1;
+                    i--;
+                    for(int del_pos = 0; del_pos < len; del_pos++)
+                    {
+                        *(data + i + del_pos) = *(data + i + del_pos + 1);
+                        if(*(data + i + del_pos) != '\0')
+                        {
+                            *(--vm->sp) = *(data + i + del_pos);
+                            emit(vm);
+                        }
+                    }
                     *(--vm->sp) = ' ';
                     emit(vm);
                     *(--vm->sp) = '\b';
                     emit(vm);
-                    i--;
+                    for(int del_pos = 0; del_pos < (len - 1); del_pos++)
+                    {
+                        *(--vm->sp) = '\b';
+                        emit(vm);
+                    }
+                }
+            break;
+            case '\033': /* ESCAPE */
+                key(vm);
+                ch = *vm->sp++;
+                if(ch != '[') err = FORTH_ERR_ERR;
+                key(vm);
+                ch = *vm->sp++;
+                if(ch == 'D')
+                {
+                    if(i > 0) 
+                    {
+                        *(--vm->sp) = '\033';
+                        emit(vm);
+                        *(--vm->sp) = '[';
+                        emit(vm);
+                        i--;
+                        *(--vm->sp) = 'D';
+                        emit(vm);
+                    }
+                }
+                else if(ch == 'C')
+                {
+                    if(*(data + i) != '\0') 
+                    {
+                        *(--vm->sp) = '\033';
+                        emit(vm);
+                        *(--vm->sp) = '[';
+                        emit(vm);
+                        i++;
+                        *(--vm->sp) = 'C';
+                        emit(vm);
+                    }
+                }
+                else if(ch == 51) /* delete */
+                {
+                    int len = strlen(data + i);
+                    for(int del_pos = 0; del_pos < len; del_pos++)
+                    {
+                        *(data + i + del_pos) = *(data + i + del_pos + 1);
+                        if(*(data + i + del_pos) != '\0')
+                        {
+                            *(--vm->sp) = *(data + i + del_pos);
+                            emit(vm);
+                        }
+                    }
+                    *(--vm->sp) = ' ';
+                    emit(vm);
+                    *(--vm->sp) = '\b';
+                    emit(vm);
+                    for(int del_pos = 0; del_pos < (len - 1); del_pos++)
+                    {
+                        *(--vm->sp) = '\b';
+                        emit(vm);
+                    }
+                    key(vm);
+                    ch = *vm->sp++;
+                    if(ch != 126) err = FORTH_ERR_ERR;
                 }
             break;
             default:
+            {
+                int len = strlen(data);
                 *(--vm->sp) = ch;
                 emit(vm);
+                for(int ins_pos = i; ins_pos < len; ins_pos++)
+                {
+                    *(--vm->sp) = *(data + ins_pos);
+                    emit(vm);
+                    *(data + ins_pos + 1) = *(data + ins_pos);
+                }
+                for(int back = 0; back < (len - i); back++)
+                {
+                    *(--vm->sp) = '\b';
+                    emit(vm);
+                }
                 *(data + i) = ch;
                 i++;
+            }
             break;
         }
 

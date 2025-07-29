@@ -4,9 +4,9 @@ project(forth)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(-Wall 
-#                     -m32
+                     -m32
                     )
-# add_link_options(-m32)
+ add_link_options(-m32)
 
 include(CTest)
 if(BUILD_TESTING)
