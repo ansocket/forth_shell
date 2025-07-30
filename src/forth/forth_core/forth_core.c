@@ -9,18 +9,104 @@
 
 extern const size_t less_program_arr[];
 
-static const size_t bl_program_arr[] = 
+static void drop_handler(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 1))
+    {
+        vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    vm->sp++;
+}
+static const size_t drop_program_arr[] = 
 {
     (FORTH_DICT_FLAG_TEXT)
-    | ((size_t)'B' << 8)
-    | ((size_t)'L' << 16)
-    | ((size_t)'\0' << 24),
+    | ((size_t)'D' << 8)
+    | ((size_t)'R' << 16)
+    | ((size_t)'O' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'P' << 32)
+    | ((size_t)'\0' << 40),
+#else
+    , ((size_t)'P' << 0)
+    | ((size_t)'\0' << 8),
+#endif
     (size_t)NULL,
     VM_OP(VM_PUSH),
-    (size_t)' ',
+    (size_t)drop_handler,
+    VM_OP(VM_C_EXEC),
     VM_OP(VM_RET),
 };
 
+static void exit_handler(vm_t* vm)
+{
+    size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, forth_search(vm, "HERE"));
+    *(++*copy_ptr) = VM_OP(VM_RET);
+}
+static const size_t exit_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_COMPILE_ONLY | FORTH_DICT_FLAG_IMMEDIATE)
+    | ((size_t)'E' << 8)
+    | ((size_t)'X' << 16)
+    | ((size_t)'I' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'T' << 32)
+    | ((size_t)'\0' << 40),
+#else
+    , ((size_t)'T' << 0)
+    | ((size_t)'\0' << 8),
+#endif
+    (size_t)drop_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)exit_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
+static void recurse_handler(vm_t* vm)
+{
+    size_t* def_ptr = (size_t*)*forth_get_variable_data_ptr(vm, forth_search(vm, "FORTH"));
+    size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, forth_search(vm, "HERE"));
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = (size_t)forth_dict_get_text_ptr(def_ptr);
+    *(++*copy_ptr) = VM_OP(VM_CALL);
+}
+static const size_t recurse_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_COMPILE_ONLY | FORTH_DICT_FLAG_IMMEDIATE)
+    | ((size_t)'R' << 8)
+    | ((size_t)'E' << 16)
+    | ((size_t)'C' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'U' << 32)
+    | ((size_t)'R' << 40)
+    | ((size_t)'S' << 48)
+    | ((size_t)'E' << 56),
+    ((size_t)'\0' << 0),
+#else
+    , ((size_t)'U' << 0)
+    | ((size_t)'R' << 8)
+    | ((size_t)'S' << 16)
+    | ((size_t)'E' << 24),
+        ((size_t)'\0' << 0),
+#endif
+    (size_t)exit_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)recurse_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
+
+static const size_t bl_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_CONSTANT)
+    | ((size_t)'B' << 8)
+    | ((size_t)'L' << 16)
+    | ((size_t)'\0' << 24),
+    (size_t)recurse_program_arr,
+    (size_t)' ',
+};
 
 static void cr_handler(vm_t* vm)
 {
