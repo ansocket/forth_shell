@@ -694,11 +694,12 @@ static void forth_do_handler(vm_t* vm)
         vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
         return;
     }
-    size_t* jmp_addr = (size_t*)*(vm->rsp++);
+    
     size_t* i_var = forth_dict_get_text_ptr(forth_search(vm, "I"));
     *i_var = *vm->sp;
     if((int)*(vm->sp + 1) <= (int)*vm->sp)
     {
+        size_t* jmp_addr = (size_t*)*(vm->rsp++);
         vm->sp += 2;
         vm->pc = jmp_addr;
         return;
@@ -712,7 +713,7 @@ static void forth_do_immediate_handler(vm_t* vm)
     size_t* here = forth_search(vm, "HERE");
     size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, here);
     *(++*copy_ptr) = VM_OP(VM_PUSH);
-    *(++*copy_ptr) = 0;
+    *(--vm->sp) = (size_t)(++*copy_ptr);
     *(++*copy_ptr) = VM_OP(VM_RPUSH);
     *(++*copy_ptr) = VM_OP(VM_PUSH);
     *(++*copy_ptr) = (size_t)forth_dict_get_text_ptr(forth_search(vm, "I"));
@@ -748,7 +749,6 @@ static void forth_loop_handler(vm_t* vm)
     i++;
     *(--vm->sp) = max;
     *(--vm->sp) = i;
-    *(--vm->rsp) = (size_t)(vm->pc);
     vm->pc = return_addr;
 }
 static void forth_loop_immediate_handler(vm_t* vm)
@@ -759,6 +759,7 @@ static void forth_loop_immediate_handler(vm_t* vm)
     *(++*copy_ptr) = VM_OP(VM_PUSH);
     *(++*copy_ptr) = (size_t)forth_loop_handler;
     *(++*copy_ptr) = VM_OP(VM_C_EXEC);
+    *(size_t*)(*vm->sp++) = (size_t)*copy_ptr;
 }
 
 const size_t loop_program_arr[] = 
@@ -781,7 +782,46 @@ const size_t loop_program_arr[] =
     VM_OP(VM_RET)
 };
 /* do END OF DEFINITION */
+static void forth_leave_handler(vm_t* vm)
+{
+    size_t* return_addr = (size_t*)*(vm->rsp++);
+    size_t max = *(vm->rsp++);
+    size_t i = *(vm->rsp++);
+    i = max;
+    *(--vm->sp) = max;
+    *(--vm->sp) = i;
+    vm->pc = return_addr;
+}
 
+static void forth_leave_immediate_handler(vm_t* vm)
+{
+    size_t* here = forth_search(vm, "HERE");
+    size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, here);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = (size_t)forth_leave_handler;
+    *(++*copy_ptr) = VM_OP(VM_C_EXEC);
+}
+const size_t leave_program_arr[] = 
+{
+    FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_COMPILE_ONLY | FORTH_DICT_FLAG_IMMEDIATE
+    | ((size_t)'L' << 8)
+    | ((size_t)'E' << 16)
+    | ((size_t)'A' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'V' << 32)
+    | ((size_t)'E' << 40)
+    | ((size_t)'\0' << 48),
+#else
+    , ((size_t)'V' << 0)
+    | ((size_t)'E' << 8)
+    | ((size_t)'\0' << 16),
+#endif
+    (size_t)loop_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)forth_leave_immediate_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET)
+};
 /* if START OF DEFINITION */
 static void forth_if_immediate_handler(vm_t* vm)
 {
@@ -801,7 +841,7 @@ const size_t if_program_arr[] =
     | ((size_t)'I' << 8)
     | ((size_t)'F' << 16)
     | ((size_t)'\0' << 24),
-    (size_t)loop_program_arr,
+    (size_t)leave_program_arr,
     VM_OP(VM_PUSH),
     (size_t)forth_if_immediate_handler,
     VM_OP(VM_C_EXEC),
