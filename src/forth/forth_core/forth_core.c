@@ -9,6 +9,19 @@
 
 extern const size_t less_program_arr[];
 
+static const size_t bl_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT)
+    | ((size_t)'B' << 8)
+    | ((size_t)'L' << 16)
+    | ((size_t)'\0' << 24),
+    (size_t)NULL,
+    VM_OP(VM_PUSH),
+    (size_t)' ',
+    VM_OP(VM_RET),
+};
+
+
 static void cr_handler(vm_t* vm)
 {
     *(--vm->sp) = '\n';
@@ -21,7 +34,7 @@ static const size_t cr_program_arr[] =
     | ((size_t)'C' << 8)
     | ((size_t)'R' << 16)
     | ((size_t)'\0' << 24),
-    (size_t)NULL,
+    (size_t)bl_program_arr,
     VM_OP(VM_PUSH),
     (size_t)cr_handler,
     VM_OP(VM_C_EXEC),
