@@ -699,6 +699,8 @@ static void forth_do_handler(vm_t* vm)
     *i_var = *vm->sp;
     if((int)*(vm->sp + 1) <= (int)*vm->sp)
     {
+        size_t* j_var = forth_dict_get_text_ptr(forth_search(vm, "J"));
+        *i_var = *j_var;
         size_t* jmp_addr = (size_t*)*(vm->rsp++);
         vm->sp += 2;
         vm->pc = jmp_addr;
@@ -822,6 +824,46 @@ const size_t leave_program_arr[] =
     VM_OP(VM_C_EXEC),
     VM_OP(VM_RET)
 };
+
+static void forth_unloop_handler(vm_t* vm)
+{
+    size_t* i_var = forth_dict_get_text_ptr(forth_search(vm, "I"));
+    size_t* j_var = forth_dict_get_text_ptr(forth_search(vm, "J"));
+    *i_var = *j_var;
+    vm->rsp += 4;
+}
+
+static void forth_unloop_immediate_handler(vm_t* vm)
+{
+    size_t* here = forth_search(vm, "HERE");
+    size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, here);
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = (size_t)forth_unloop_handler;
+    *(++*copy_ptr) = VM_OP(VM_C_EXEC);
+}
+const size_t unloop_program_arr[] = 
+{
+    FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_COMPILE_ONLY | FORTH_DICT_FLAG_IMMEDIATE
+    | ((size_t)'U' << 8)
+    | ((size_t)'N' << 16)
+    | ((size_t)'L' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'O' << 32)
+    | ((size_t)'O' << 40)
+    | ((size_t)'P' << 48)
+    | ((size_t)'\0' << 56),
+#else
+    , ((size_t)'O' << 0)
+    | ((size_t)'O' << 8)
+    | ((size_t)'P' << 16)
+    | ((size_t)'\0' << 24),
+#endif
+    (size_t)leave_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)forth_unloop_immediate_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET)
+};
 /* if START OF DEFINITION */
 static void forth_if_immediate_handler(vm_t* vm)
 {
@@ -841,7 +883,7 @@ const size_t if_program_arr[] =
     | ((size_t)'I' << 8)
     | ((size_t)'F' << 16)
     | ((size_t)'\0' << 24),
-    (size_t)leave_program_arr,
+    (size_t)unloop_program_arr,
     VM_OP(VM_PUSH),
     (size_t)forth_if_immediate_handler,
     VM_OP(VM_C_EXEC),
