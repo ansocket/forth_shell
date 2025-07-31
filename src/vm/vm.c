@@ -310,6 +310,10 @@ void vm_rpop(vm_t* vm)
     }
     *(--vm->sp) = *vm->rsp++;
 }
+void vm_quit(vm_t* vm)
+{
+    vm->exceptions_flags |= VM_EXCEPTION_BYE;
+}
 static const vm_ops_t ops[] = 
 {
     [VM_NONE] = vm_none,
@@ -337,5 +341,6 @@ static const vm_ops_t ops[] =
     [VM_LESS] = vm_less,
     [VM_GREATER] = vm_greater,
     [VM_IT] = vm_it,
+    [VM_QUIT] = vm_quit,
     [VM_SWAP] = vm_swap
 };

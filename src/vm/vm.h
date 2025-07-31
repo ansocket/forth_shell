@@ -72,7 +72,7 @@ enum
     VM_IT,
     VM_SWAP,
     VM_LOADBYTE,
-    
+    VM_QUIT,
     VM_STRBYTE,
     VM_BYE
 };

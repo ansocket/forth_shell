@@ -9,6 +9,132 @@
 
 extern const size_t less_program_arr[];
 
+static void postpone_handler(vm_t* vm)
+{
+    char* token = forth_get_token(vm);
+    if(token == NULL)
+    {
+        vm->exceptions_flags |= VM_EXCEPTION_MEMFAULT;
+        return;
+    }
+    size_t* result = forth_search(vm, token);
+    if(result == NULL)
+    {
+        vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW; /* TODO */
+        return;
+    }
+    size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, forth_search(vm, "HERE"));
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = (size_t)forth_dict_get_text_ptr(result);
+    *(++*copy_ptr) = VM_OP(VM_CALL);
+}
+static const size_t postpone_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_COMPILE_ONLY | FORTH_DICT_FLAG_IMMEDIATE)
+    | ((size_t)'P' << 8)
+    | ((size_t)'O' << 16)
+    | ((size_t)'S' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'T' << 32)
+    | ((size_t)'P' << 40)
+    | ((size_t)'O' << 48)
+    | ((size_t)'N' << 56),
+    ((size_t)'E' << 0)
+    | ((size_t)'\0' << 8),
+#else
+    , ((size_t)'T' << 0)
+    | ((size_t)'P' << 8)
+    | ((size_t)'O' << 16)
+    | ((size_t)'N' << 24),
+    ((size_t)'E' << 0)
+    | ((size_t)'\0' << 8),
+#endif
+    (size_t)NULL,
+    VM_OP(VM_PUSH),
+    (size_t)postpone_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
+static void literal_handler(vm_t* vm)
+{
+    if(vm->sp > (vm->stack_top - 1))
+    {
+        vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW;
+        return;
+    }
+    size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, forth_search(vm, "HERE"));
+    *(++*copy_ptr) = VM_OP(VM_PUSH);
+    *(++*copy_ptr) = *(vm->sp++);
+}
+static const size_t literal_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_COMPILE_ONLY | FORTH_DICT_FLAG_IMMEDIATE)
+    | ((size_t)'L' << 8)
+    | ((size_t)'I' << 16)
+    | ((size_t)'T' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'E' << 32)
+    | ((size_t)'R' << 40)
+    | ((size_t)'A' << 48)
+    | ((size_t)'L' << 56),
+    ((size_t)'\0' << 0),
+#else
+    , ((size_t)'E' << 0)
+    | ((size_t)'R' << 8)
+    | ((size_t)'A' << 16)
+    | ((size_t)'L' << 24),
+    ((size_t)'\0' << 0),
+#endif
+    (size_t)postpone_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)literal_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
+static void right_bracket_handler(vm_t* vm)
+{
+    size_t* state_ptr = forth_get_variable_data_ptr(vm, forth_search(vm, "STATE"));
+    size_t* sandbox = forth_search(vm, "SANDBOX");
+    size_t** copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, sandbox);
+    *(++*copy_ptr) = VM_OP(VM_QUIT);
+    size_t* return_addr = vm->pc;
+    vm_start(vm, (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET));
+    vm->exceptions_flags &= ~VM_EXCEPTION_BYE;
+    *copy_ptr = (size_t*)(vm->ram + FORTH_SANDBOX_OFFSET - sizeof(size_t));
+    vm->pc = return_addr;
+    *state_ptr = FORTH_STATE_COMPILE;
+}
+static const size_t right_bracket_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_IMMEDIATE)
+    | ((size_t)']' << 8)
+    | ((size_t)'\0' << 16),
+    (size_t)literal_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)right_bracket_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
+static void left_bracket_handler(vm_t* vm)
+{
+    size_t* state_ptr = forth_get_variable_data_ptr(vm, forth_search(vm, "STATE"));
+    *state_ptr = FORTH_STATE_INTERPRET;
+}
+static const size_t left_bracket_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT | FORTH_DICT_FLAG_COMPILE_ONLY | FORTH_DICT_FLAG_IMMEDIATE)
+    | ((size_t)'[' << 8)
+    | ((size_t)'\0' << 16),
+    (size_t)right_bracket_program_arr,
+    VM_OP(VM_PUSH),
+    (size_t)left_bracket_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
 static void immediate_handler(vm_t* vm)
 {
     char* def_ptr = (char*)*forth_get_variable_data_ptr(vm, forth_search(vm, "FORTH"));
@@ -37,7 +163,7 @@ static const size_t immediate_program_arr[] =
     | ((size_t)'E' << 8)
     | ((size_t)'\0' << 16),
 #endif
-    (size_t)NULL,
+    (size_t)left_bracket_program_arr,
     VM_OP(VM_PUSH),
     (size_t)immediate_handler,
     VM_OP(VM_C_EXEC),
