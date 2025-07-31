@@ -9,6 +9,41 @@
 
 extern const size_t less_program_arr[];
 
+static void immediate_handler(vm_t* vm)
+{
+    char* def_ptr = (char*)*forth_get_variable_data_ptr(vm, forth_search(vm, "FORTH"));
+    *def_ptr |= FORTH_DICT_FLAG_IMMEDIATE;
+}
+static const size_t immediate_program_arr[] = 
+{
+    (FORTH_DICT_FLAG_TEXT)
+    | ((size_t)'I' << 8)
+    | ((size_t)'M' << 16)
+    | ((size_t)'M' << 24)
+#if __SIZEOF_SIZE_T__ == 8
+    | ((size_t)'E' << 32)
+    | ((size_t)'D' << 40)
+    | ((size_t)'I' << 48)
+    | ((size_t)'A' << 56),
+    ((size_t)'T' << 0)
+    | ((size_t)'E' << 8)
+    | ((size_t)'\0' << 16),
+#else
+    , ((size_t)'E' << 0)
+    | ((size_t)'D' << 8)
+    | ((size_t)'I' << 16)
+    | ((size_t)'A' << 24),
+    ((size_t)'T' << 0)
+    | ((size_t)'E' << 8)
+    | ((size_t)'\0' << 16),
+#endif
+    (size_t)NULL,
+    VM_OP(VM_PUSH),
+    (size_t)immediate_handler,
+    VM_OP(VM_C_EXEC),
+    VM_OP(VM_RET),
+};
+
 static void drop_handler(vm_t* vm)
 {
     if(vm->sp > (vm->stack_top - 1))
@@ -31,7 +66,7 @@ static const size_t drop_program_arr[] =
     , ((size_t)'P' << 0)
     | ((size_t)'\0' << 8),
 #endif
-    (size_t)NULL,
+    (size_t)immediate_program_arr,
     VM_OP(VM_PUSH),
     (size_t)drop_handler,
     VM_OP(VM_C_EXEC),
@@ -390,7 +425,8 @@ static void constant_post_handler(vm_t* vm)
     }
     char* token = (char*)*(vm->sp++);
     int value = *(vm->sp++);
-    forth_add_constant(vm, token, value);
+    size_t* val_ptr = forth_dict_get_text_ptr(forth_search(vm, token));
+    *val_ptr = value;
 }
 static void constant_handler(vm_t* vm)
 {
@@ -406,6 +442,7 @@ static void constant_handler(vm_t* vm)
         copy_ptr = (size_t**)forth_get_variable_data_ptr(vm, sandbox);
     }
     char* token = forth_get_token(vm);
+    forth_add_constant(vm, token, 0);
     if(token == NULL)
     {
         vm->exceptions_flags |= VM_EXCEPTION_STACK_UNDERFLOW; /* TODO */
